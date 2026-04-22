@@ -30,12 +30,12 @@ trading/
 │   ├── router.go            # gin 路由注册
 │   ├── handler.go           # 公共 handler 结构体与响应方法
 │   ├── handler_test.go      # 公共 mock 与测试工具
-│   ├── stock_historical.go  # POST /api/stocks/historical
-│   ├── stock_historical_test.go
-│   ├── stock_analysis.go    # GET /api/stocks/analysis
-│   ├── stock_analysis_test.go
-│   ├── stock_append.go      # POST /api/stocks/append
-│   └── stock_append_test.go
+│   ├── save_stock_historical_data.go    # POST /api/stocks/historical
+│   ├── save_stock_historical_data_test.go
+│   ├── get_stock_analysis_data.go       # GET /api/stocks/analysis
+│   ├── get_stock_analysis_data_test.go
+│   ├── append_stock_data.go             # POST /api/stocks/append
+│   └── append_stock_data_test.go
 ├── pkg/
 │   ├── broker/              # 行情数据提供者
 │   │   ├── broker.go        # IBroker 统一接口
