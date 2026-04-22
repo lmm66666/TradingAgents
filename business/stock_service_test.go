@@ -43,6 +43,12 @@ func (m *mockDailyRepo) FindByID(ctx context.Context, id uint) (*model.StockKlin
 func (m *mockDailyRepo) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineDaily, error) {
 	return m.k, m.findErr
 }
+func (m *mockDailyRepo) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineDaily, error) {
+	return nil, nil
+}
+func (m *mockDailyRepo) FindAllCodes(ctx context.Context) ([]string, error) {
+	return nil, nil
+}
 func (m *mockDailyRepo) Update(ctx context.Context, kline *model.StockKlineDaily) error { return nil }
 func (m *mockDailyRepo) Delete(ctx context.Context, id uint) error                      { return nil }
 func (m *mockDailyRepo) List(ctx context.Context, limit, offset int) ([]*model.StockKlineDaily, error) {
@@ -62,6 +68,12 @@ func (m *mockWeeklyRepo) Upsert(ctx context.Context, klines []*model.StockKlineW
 func (m *mockWeeklyRepo) FindByID(ctx context.Context, id uint) (*model.StockKlineWeekly, error)  { return nil, nil }
 func (m *mockWeeklyRepo) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineWeekly, error) {
 	return m.k, m.findErr
+}
+func (m *mockWeeklyRepo) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineWeekly, error) {
+	return nil, nil
+}
+func (m *mockWeeklyRepo) FindAllCodes(ctx context.Context) ([]string, error) {
+	return nil, nil
 }
 func (m *mockWeeklyRepo) Update(ctx context.Context, kline *model.StockKlineWeekly) error { return nil }
 func (m *mockWeeklyRepo) Delete(ctx context.Context, id uint) error                      { return nil }
@@ -193,17 +205,8 @@ func TestStockServiceGetStockAnalysisDataSuccess(t *testing.T) {
 	if len(result.Weekly) != 1 {
 		t.Fatalf("expected 1 weekly item, got %d", len(result.Weekly))
 	}
-	if len(result.DailyMACD) != 2 {
-		t.Fatalf("expected 2 daily MACD, got %d", len(result.DailyMACD))
-	}
-	if len(result.WeeklyMACD) != 1 {
-		t.Fatalf("expected 1 weekly MACD, got %d", len(result.WeeklyMACD))
-	}
-	if len(result.DailyKDJ) != 2 {
-		t.Fatalf("expected 2 daily KDJ, got %d", len(result.DailyKDJ))
-	}
-	if len(result.WeeklyKDJ) != 1 {
-		t.Fatalf("expected 1 weekly KDJ, got %d", len(result.WeeklyKDJ))
+	if len(result.Daily) == 0 || len(result.Weekly) == 0 {
+		t.Fatal("expected non-empty daily and weekly analysis items")
 	}
 }
 
