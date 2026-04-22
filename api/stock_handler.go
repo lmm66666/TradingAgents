@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -40,18 +39,15 @@ func (h *StockHandler) SaveStockHistoricalData(c *gin.Context) {
 	respondSuccess(c, nil)
 }
 
-// GetStockData 从 DB 获取股票数据
-func (h *StockHandler) GetStockData(c *gin.Context) {
+// GetStockAnalysisData 获取股票分析数据
+func (h *StockHandler) GetStockAnalysisData(c *gin.Context) {
 	code := c.Query("code")
 	if code == "" {
 		respondError(c, http.StatusBadRequest, "code is required")
 		return
 	}
 
-	scale, _ := strconv.Atoi(c.DefaultQuery("scale", "240"))
-	length, _ := strconv.Atoi(c.DefaultQuery("len", "240"))
-
-	data, err := h.svc.GetStockData(c.Request.Context(), code, scale, length)
+	data, err := h.svc.GetStockAnalysisData(c.Request.Context(), code)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return

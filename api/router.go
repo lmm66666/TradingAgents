@@ -12,7 +12,7 @@ func NewRouter(svc business.StockService) *gin.Engine {
 	h := NewStockHandler(svc)
 
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
-	r.GET("/api/stocks/data", h.GetStockData)
+	r.GET("/api/stocks/analysis", h.GetStockAnalysisData)
 
 	return r
 }
