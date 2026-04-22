@@ -9,12 +9,21 @@ import (
 	"trading/data"
 	"trading/model"
 	"trading/pkg/broker"
+	"trading/pkg/utils"
 )
 
-// StockService 股票数据业务逻辑接口
+type StockAnalysisData struct {
+	Daily      []*model.StockKline `json:"daily"`
+	Weekly     []*model.StockKline `json:"weekly"`
+	DailyMACD  []utils.MACDResult  `json:"daily_macd"`
+	WeeklyMACD []utils.MACDResult  `json:"weekly_macd"`
+	DailyKDJ   []utils.KDJResult   `json:"daily_kdj"`
+	WeeklyKDJ  []utils.KDJResult   `json:"weekly_kdj"`
+}
+
 type StockService interface {
 	SaveHistoricalData(ctx context.Context, code string) error
-	GetStockData(ctx context.Context, code string, scale int, length int) ([]*model.StockKline, error)
+	GetStockAnalysisData(ctx context.Context, code string) (*StockAnalysisData, error)
 }
 
 type stockService struct {
@@ -65,26 +74,29 @@ func (s *stockService) SaveHistoricalData(ctx context.Context, code string) erro
 	return nil
 }
 
-// GetStockData 从 DB 获取股票数据并按 scale 聚合
-func (s *stockService) GetStockData(ctx context.Context, code string, scale int, length int) ([]*model.StockKline, error) {
-	if length <= 0 {
-		length = 240
-	}
-
-	dailies, err := s.dailyRepo.FindByCode(ctx, code, 0)
+// GetStockAnalysisData 获取股票分析数据（日线/周线 + MACD/KDJ）
+func (s *stockService) GetStockAnalysisData(ctx context.Context, code string) (*StockAnalysisData, error) {
+	dailies, err := s.dailyRepo.FindByCode(ctx, code, 100)
 	if err != nil {
 		return nil, fmt.Errorf("find daily by code failed: %w", err)
 	}
 
-	klines := dailyToKlines(dailies)
-
-	groupSize := max(1, scale/240)
-	if groupSize == 1 {
-		return takeLast(klines, length), nil
+	weeklies, err := s.weeklyRepo.FindByCode(ctx, code, 50)
+	if err != nil {
+		return nil, fmt.Errorf("find weekly by code failed: %w", err)
 	}
 
-	aggregated := aggregateKlines(klines, groupSize)
-	return takeLast(aggregated, length), nil
+	dailyKlines := dailyToKlines(dailies)
+	weeklyKlines := weeklyToKlines(weeklies)
+
+	return &StockAnalysisData{
+		Daily:      dailyKlines,
+		Weekly:     weeklyKlines,
+		DailyMACD:  utils.ComputeMACD(dailyKlines),
+		WeeklyMACD: utils.ComputeMACD(weeklyKlines),
+		DailyKDJ:   utils.ComputeKDJ(dailyKlines),
+		WeeklyKDJ:  utils.ComputeKDJ(weeklyKlines),
+	}, nil
 }
 
 // toSymbol 将纯数字 code 转换为带前缀的 symbol
@@ -139,108 +151,38 @@ func isFriday(dateStr string) bool {
 	return t.Weekday() == time.Friday
 }
 
-// toDaily 将通用 K 线转换为日线模型
 func toDaily(klines []*model.StockKline) []*model.StockKlineDaily {
 	result := make([]*model.StockKlineDaily, 0, len(klines))
 	for _, k := range klines {
-		result = append(result, &model.StockKlineDaily{
-			Code:   k.Code,
-			Date:   k.Date,
-			Open:   k.Open,
-			High:   k.High,
-			Low:    k.Low,
-			Close:  k.Close,
-			Volume: k.Volume,
-		})
+		d := model.StockKlineDaily(*k)
+		result = append(result, &d)
 	}
 	return result
 }
 
-// toWeekly 将通用 K 线转换为周线模型
 func toWeekly(klines []*model.StockKline) []*model.StockKlineWeekly {
 	result := make([]*model.StockKlineWeekly, 0, len(klines))
 	for _, k := range klines {
-		result = append(result, &model.StockKlineWeekly{
-			Code:   k.Code,
-			Date:   k.Date,
-			Open:   k.Open,
-			High:   k.High,
-			Low:    k.Low,
-			Close:  k.Close,
-			Volume: k.Volume,
-		})
+		w := model.StockKlineWeekly(*k)
+		result = append(result, &w)
 	}
 	return result
 }
 
-// dailyToKlines 将日线模型转换为通用 K 线
 func dailyToKlines(dailies []*model.StockKlineDaily) []*model.StockKline {
 	result := make([]*model.StockKline, 0, len(dailies))
 	for _, d := range dailies {
-		result = append(result, &model.StockKline{
-			Code:   d.Code,
-			Date:   d.Date,
-			Open:   d.Open,
-			High:   d.High,
-			Low:    d.Low,
-			Close:  d.Close,
-			Volume: d.Volume,
-		})
+		k := model.StockKline(*d)
+		result = append(result, &k)
 	}
 	return result
 }
 
-// aggregateKlines 将 klines 按 groupSize 条聚合成一条
-func aggregateKlines(klines []*model.StockKline, groupSize int) []*model.StockKline {
-	if len(klines) == 0 || groupSize <= 1 {
-		return klines
-	}
-
-	result := make([]*model.StockKline, 0, (len(klines)+groupSize-1)/groupSize)
-	for i := 0; i < len(klines); i += groupSize {
-		end := i + groupSize
-		if end > len(klines) {
-			end = len(klines)
-		}
-
-		agg := aggregateGroup(klines[i:end])
-		result = append(result, agg)
+func weeklyToKlines(weeklies []*model.StockKlineWeekly) []*model.StockKline {
+	result := make([]*model.StockKline, 0, len(weeklies))
+	for _, w := range weeklies {
+		k := model.StockKline(*w)
+		result = append(result, &k)
 	}
 	return result
-}
-
-// aggregateGroup 聚合一组 K 线数据
-func aggregateGroup(group []*model.StockKline) *model.StockKline {
-	first := group[0]
-	last := group[len(group)-1]
-
-	var high, low float64
-	var volume int64
-	for _, k := range group {
-		if k.High > high || high == 0 {
-			high = k.High
-		}
-		if k.Low < low || low == 0 {
-			low = k.Low
-		}
-		volume += k.Volume
-	}
-
-	return &model.StockKline{
-		Code:   first.Code,
-		Date:   last.Date,
-		Open:   first.Open,
-		High:   high,
-		Low:    low,
-		Close:  last.Close,
-		Volume: volume,
-	}
-}
-
-// takeLast 取切片最后 n 条
-func takeLast(klines []*model.StockKline, n int) []*model.StockKline {
-	if n >= len(klines) {
-		return klines
-	}
-	return klines[len(klines)-n:]
 }

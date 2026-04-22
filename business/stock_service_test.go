@@ -51,7 +51,9 @@ func (m *mockDailyRepo) List(ctx context.Context, limit, offset int) ([]*model.S
 
 // mockWeeklyRepo 模拟周线数据仓库
 type mockWeeklyRepo struct {
-	upErr error
+	k       []*model.StockKlineWeekly
+	findErr error
+	upErr   error
 }
 
 func (m *mockWeeklyRepo) Create(ctx context.Context, kline *model.StockKlineWeekly) error         { return nil }
@@ -59,7 +61,7 @@ func (m *mockWeeklyRepo) CreateBatch(ctx context.Context, klines []*model.StockK
 func (m *mockWeeklyRepo) Upsert(ctx context.Context, klines []*model.StockKlineWeekly) error      { return m.upErr }
 func (m *mockWeeklyRepo) FindByID(ctx context.Context, id uint) (*model.StockKlineWeekly, error)  { return nil, nil }
 func (m *mockWeeklyRepo) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineWeekly, error) {
-	return nil, nil
+	return m.k, m.findErr
 }
 func (m *mockWeeklyRepo) Update(ctx context.Context, kline *model.StockKlineWeekly) error { return nil }
 func (m *mockWeeklyRepo) Delete(ctx context.Context, id uint) error                      { return nil }
@@ -166,93 +168,68 @@ func TestStockServiceSaveHistoricalDataWeeklyRepoError(t *testing.T) {
 	}
 }
 
-// TestStockServiceGetStockDataSuccess 成功获取数据
-func TestStockServiceGetStockDataSuccess(t *testing.T) {
+// TestStockServiceGetStockAnalysisDataSuccess 成功获取分析数据
+func TestStockServiceGetStockAnalysisDataSuccess(t *testing.T) {
 	dailyRepo := &mockDailyRepo{
 		k: []*model.StockKlineDaily{
 			{Code: "000001", Date: "2025-04-20", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
 			{Code: "000001", Date: "2025-04-21", Open: 1.5, High: 3, Low: 1, Close: 2, Volume: 200},
 		},
 	}
-	svc := NewStockService(&mockBroker{}, dailyRepo, &mockWeeklyRepo{})
+	weeklyRepo := &mockWeeklyRepo{
+		k: []*model.StockKlineWeekly{
+			{Code: "000001", Date: "2025-04-18", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
+		},
+	}
+	svc := NewStockService(&mockBroker{}, dailyRepo, weeklyRepo)
 
-	data, err := svc.GetStockData(context.Background(), "000001", 240, 2)
+	result, err := svc.GetStockAnalysisData(context.Background(), "000001")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if len(data) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(data))
+	if len(result.Daily) != 2 {
+		t.Fatalf("expected 2 daily items, got %d", len(result.Daily))
+	}
+	if len(result.Weekly) != 1 {
+		t.Fatalf("expected 1 weekly item, got %d", len(result.Weekly))
+	}
+	if len(result.DailyMACD) != 2 {
+		t.Fatalf("expected 2 daily MACD, got %d", len(result.DailyMACD))
+	}
+	if len(result.WeeklyMACD) != 1 {
+		t.Fatalf("expected 1 weekly MACD, got %d", len(result.WeeklyMACD))
+	}
+	if len(result.DailyKDJ) != 2 {
+		t.Fatalf("expected 2 daily KDJ, got %d", len(result.DailyKDJ))
+	}
+	if len(result.WeeklyKDJ) != 1 {
+		t.Fatalf("expected 1 weekly KDJ, got %d", len(result.WeeklyKDJ))
 	}
 }
 
-// TestStockServiceGetStockDataRepoError repo 查询失败
-func TestStockServiceGetStockDataRepoError(t *testing.T) {
+// TestStockServiceGetStockAnalysisDataDailyError 日线查询失败
+func TestStockServiceGetStockAnalysisDataDailyError(t *testing.T) {
 	dailyRepo := &mockDailyRepo{findErr: errors.New("db down")}
 	svc := NewStockService(&mockBroker{}, dailyRepo, &mockWeeklyRepo{})
 
-	_, err := svc.GetStockData(context.Background(), "000001", 240, 10)
+	_, err := svc.GetStockAnalysisData(context.Background(), "000001")
 	if err == nil {
-		t.Fatal("expected error when repo fails")
+		t.Fatal("expected error when daily repo fails")
 	}
 }
 
-// TestStockServiceGetStockDataAggregation scale 聚合
-func TestStockServiceGetStockDataAggregation(t *testing.T) {
-	dailyRepo := &mockDailyRepo{
-		k: []*model.StockKlineDaily{
-			{Code: "000001", Date: "2025-04-18", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
-			{Code: "000001", Date: "2025-04-19", Open: 1.5, High: 3, Low: 1, Close: 2, Volume: 200},
-			{Code: "000001", Date: "2025-04-20", Open: 2, High: 4, Low: 1.5, Close: 3, Volume: 300},
-			{Code: "000001", Date: "2025-04-21", Open: 3, High: 5, Low: 2, Close: 4, Volume: 400},
-		},
-	}
-	svc := NewStockService(&mockBroker{}, dailyRepo, &mockWeeklyRepo{})
-
-	// scale=480, 每 2 条聚合成 1 条，取 1 条
-	data, err := svc.GetStockData(context.Background(), "000001", 480, 1)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(data) != 1 {
-		t.Fatalf("expected 1 aggregated item, got %d", len(data))
-	}
-
-	agg := data[0]
-	if agg.Open != 2 { // 第 3 条的 Open
-		t.Errorf("Open = %.2f, want 2.00", agg.Open)
-	}
-	if agg.High != 5 { // max High
-		t.Errorf("High = %.2f, want 5.00", agg.High)
-	}
-	if agg.Low != 1.5 { // min Low
-		t.Errorf("Low = %.2f, want 1.50", agg.Low)
-	}
-	if agg.Close != 4 { // 第 4 条的 Close
-		t.Errorf("Close = %.2f, want 4.00", agg.Close)
-	}
-	if agg.Volume != 700 { // 300 + 400
-		t.Errorf("Volume = %d, want 700", agg.Volume)
-	}
-	if agg.Date != "2025-04-21" {
-		t.Errorf("Date = %s, want 2025-04-21", agg.Date)
-	}
-}
-
-// TestStockServiceGetStockDataDefaultLen len 默认值为 240
-func TestStockServiceGetStockDataDefaultLen(t *testing.T) {
+// TestStockServiceGetStockAnalysisDataWeeklyError 周线查询失败
+func TestStockServiceGetStockAnalysisDataWeeklyError(t *testing.T) {
 	dailyRepo := &mockDailyRepo{
 		k: []*model.StockKlineDaily{
 			{Code: "000001", Date: "2025-04-20", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
 		},
 	}
-	svc := NewStockService(&mockBroker{}, dailyRepo, &mockWeeklyRepo{})
+	weeklyRepo := &mockWeeklyRepo{findErr: errors.New("db down")}
+	svc := NewStockService(&mockBroker{}, dailyRepo, weeklyRepo)
 
-	// len <= 0 时使用默认值 240
-	data, err := svc.GetStockData(context.Background(), "000001", 240, 0)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(data) != 1 {
-		t.Fatalf("expected 1 item, got %d", len(data))
+	_, err := svc.GetStockAnalysisData(context.Background(), "000001")
+	if err == nil {
+		t.Fatal("expected error when weekly repo fails")
 	}
 }
