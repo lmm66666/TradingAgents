@@ -18,6 +18,8 @@ type IBroker interface {
 
 	// GetStockHistorical 获取历史 K 线数据
 	// symbol: 股票代码（如 sh000001）
+	// scale: 时间粒度（分钟，如 5, 15, 30, 60, 240）
+	// length: 数据条数
 	// 返回: StockKline 数组（按日期升序）
-	GetStockHistorical(ctx context.Context, symbol string) ([]model.StockKline, error)
+	GetStockHistorical(ctx context.Context, symbol string, scale int, length int) ([]model.StockKline, error)
 }

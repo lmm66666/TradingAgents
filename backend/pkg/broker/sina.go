@@ -38,7 +38,11 @@ func NewSinaBroker() *SinaBroker {
 }
 
 func (p *SinaBroker) getBytes(ctx context.Context, path string, headers map[string]string) ([]byte, error) {
-	u, err := url.Parse(p.baseURL + path)
+	return p.getBytesURL(ctx, p.baseURL+path, headers)
+}
+
+func (p *SinaBroker) getBytesURL(ctx context.Context, rawURL string, headers map[string]string) ([]byte, error) {
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid url: %w", err)
 	}
@@ -127,31 +131,23 @@ func (p *SinaBroker) GetStockToday(ctx context.Context, code string) (*model.Sto
 }
 
 // GetStockHistorical 获取历史 K 线数据
-func (p *SinaBroker) GetStockHistorical(ctx context.Context, symbol string) ([]model.StockKline, error) {
-	url := fmt.Sprintf(
-		"https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=%s&scale=240&ma=no&datalen=30",
-		symbol,
-	)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func (p *SinaBroker) GetStockHistorical(ctx context.Context, symbol string, scale int, length int) ([]model.StockKline, error) {
+	u, err := url.Parse("https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid url: %w", err)
 	}
-	req.Header.Set("Referer", "https://finance.sina.com.cn/")
+	q := u.Query()
+	q.Set("symbol", symbol)
+	q.Set("scale", strconv.Itoa(scale))
+	q.Set("ma", "no")
+	q.Set("datalen", strconv.Itoa(length))
+	u.RawQuery = q.Encode()
 
-	resp, err := http.DefaultClient.Do(req)
+	body, err := p.getBytesURL(ctx, u.String(), map[string]string{
+		"Referer": "https://finance.sina.com.cn/",
+	})
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("status=%d", resp.StatusCode)
+		return nil, fmt.Errorf("fetch historical failed: %w", err)
 	}
 
 	return parseKLineResponse(symbol, string(body))

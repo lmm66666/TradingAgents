@@ -53,7 +53,7 @@ func TestSinaBrokerGetStockHistorical(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	data, err := broker.GetStockHistorical(ctx, "sh000001")
+	data, err := broker.GetStockHistorical(ctx, "sh000001", 240, 30)
 	if err != nil {
 		t.Fatalf("fetch historical failed: %v", err)
 	}
