@@ -21,7 +21,9 @@ trading/
 │   └── stock_kline.go       # StockKline CRUD 接口与实现（含 Upsert）
 ├── business/                # 业务逻辑层
 │   ├── stock_service.go     # StockService 接口与实现（聚合、清洗、调用 broker/repo）
-│   └── stock_service_test.go
+│   ├── stock_service_test.go
+│   ├── scheduler.go         # 定时任务调度器（每日扫描并补充缺失数据）
+│   └── scheduler_test.go
 ├── api/                     # HTTP API 层（gin）
 │   ├── api.md               # API 接口文档（含 curl 示例）
 │   ├── router.go            # gin 路由注册
