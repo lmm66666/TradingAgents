@@ -7,7 +7,7 @@ import (
 )
 
 // NewRouter 创建 gin 路由
-func NewRouter(svc business.StockService, scheduler Scheduler) *gin.Engine {
+func NewRouter(svc business.StockService, scheduler business.Scheduler) *gin.Engine {
 	r := gin.Default()
 	h := NewStockHandler(svc, scheduler)
 

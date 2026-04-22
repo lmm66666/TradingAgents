@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,16 +11,11 @@ import (
 // StockHandler 股票数据 HTTP 处理器
 type StockHandler struct {
 	svc       business.StockService
-	scheduler Scheduler
-}
-
-// Scheduler 调度器接口，支持手动触发扫描
-type Scheduler interface {
-	TriggerNow(ctx context.Context) error
+	scheduler business.Scheduler
 }
 
 // NewStockHandler 创建 StockHandler
-func NewStockHandler(svc business.StockService, scheduler Scheduler) *StockHandler {
+func NewStockHandler(svc business.StockService, scheduler business.Scheduler) *StockHandler {
 	return &StockHandler{svc: svc, scheduler: scheduler}
 }
 

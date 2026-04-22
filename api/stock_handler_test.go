@@ -34,11 +34,13 @@ type mockScheduler struct {
 	triggerErr error
 }
 
+func (m *mockScheduler) Start(ctx context.Context, hour, minute int) {}
+func (m *mockScheduler) Stop() {}
 func (m *mockScheduler) TriggerNow(ctx context.Context) error {
 	return m.triggerErr
 }
 
-func setupTestRouter(svc business.StockService, scheduler Scheduler) *gin.Engine {
+func setupTestRouter(svc business.StockService, scheduler business.Scheduler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	h := NewStockHandler(svc, scheduler)
@@ -107,7 +109,7 @@ func TestGetStockAnalysisDataSuccess(t *testing.T) {
 	svc := &mockStockService{
 		analysis: &business.StockAnalysisData{
 			Daily: []business.AnalysisItem{
-				{Date: "2025-04-21", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100, KDJ: business.KDJPoint{K: 50, D: 50, J: 50}, MACD: business.MACDPoint{DIF: 0.1, DEA: 0.05, BAR: 0.1}},
+				{Date: "2025-04-21", Price: 1.5, Volume: 100, J: 50, DEA: 0.05, MA10: 1.5, MA20: 1.5, MA60: 1.5},
 			},
 			Weekly: []business.AnalysisItem{},
 		},

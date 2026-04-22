@@ -133,7 +133,7 @@ func TestSchedulerScanAllUpToDate(t *testing.T) {
 	}
 
 	svc := &mockSvcForScheduler{}
-	sched := NewScheduler(svc, dailyRepo, weeklyRepo)
+	sched := NewScheduler(svc, dailyRepo, weeklyRepo).(*stockScheduler)
 
 	tasks, err := sched.scan(context.Background())
 	if err != nil {
@@ -161,7 +161,7 @@ func TestSchedulerScanMissingDaily(t *testing.T) {
 	}
 
 	svc := &mockSvcForScheduler{}
-	sched := NewScheduler(svc, dailyRepo, weeklyRepo)
+	sched := NewScheduler(svc, dailyRepo, weeklyRepo).(*stockScheduler)
 
 	tasks, err := sched.scan(context.Background())
 	if err != nil {
@@ -195,7 +195,7 @@ func TestSchedulerScanMissingWeekly(t *testing.T) {
 	}
 
 	svc := &mockSvcForScheduler{}
-	sched := NewScheduler(svc, dailyRepo, weeklyRepo)
+	sched := NewScheduler(svc, dailyRepo, weeklyRepo).(*stockScheduler)
 
 	tasks, err := sched.scan(context.Background())
 	if err != nil {
@@ -231,7 +231,7 @@ func TestSchedulerScanUnionCodes(t *testing.T) {
 	}
 
 	svc := &mockSvcForScheduler{}
-	sched := NewScheduler(svc, dailyRepo, weeklyRepo)
+	sched := NewScheduler(svc, dailyRepo, weeklyRepo).(*stockScheduler)
 
 	tasks, err := sched.scan(context.Background())
 	if err != nil {
@@ -245,7 +245,7 @@ func TestSchedulerScanUnionCodes(t *testing.T) {
 
 func TestSchedulerProcessSuccess(t *testing.T) {
 	svc := &mockSvcForScheduler{}
-	sched := NewScheduler(svc, &mockDailyRepoForScheduler{}, &mockWeeklyRepoForScheduler{})
+	sched := NewScheduler(svc, &mockDailyRepoForScheduler{}, &mockWeeklyRepoForScheduler{}).(*stockScheduler)
 
 	err := sched.process(context.Background(), task{code: "000001", needDaily: true})
 	if err != nil {
@@ -255,7 +255,7 @@ func TestSchedulerProcessSuccess(t *testing.T) {
 
 func TestSchedulerProcessError(t *testing.T) {
 	svc := &mockSvcForScheduler{saveErr: errors.New("save failed")}
-	sched := NewScheduler(svc, &mockDailyRepoForScheduler{}, &mockWeeklyRepoForScheduler{})
+	sched := NewScheduler(svc, &mockDailyRepoForScheduler{}, &mockWeeklyRepoForScheduler{}).(*stockScheduler)
 
 	err := sched.process(context.Background(), task{code: "000001", needDaily: true})
 	if err == nil {

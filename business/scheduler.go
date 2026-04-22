@@ -9,19 +9,25 @@ import (
 	"trading/data"
 )
 
-// Scheduler 定时任务调度器，每天扫描并补充缺失的股票数据
-type Scheduler struct {
+// Scheduler 调度器接口
+type Scheduler interface {
+	Start(ctx context.Context, hour, minute int)
+	Stop()
+	TriggerNow(ctx context.Context) error
+}
+
+// stockScheduler 定时任务调度器实现，每天扫描并补充缺失的股票数据
+type stockScheduler struct {
 	svc        StockService
 	dailyRepo  data.StockKlineDailyRepo
 	weeklyRepo data.StockKlineWeeklyRepo
-	ticker     *time.Ticker
 	stopCh     chan struct{}
 	interval   time.Duration
 }
 
 // NewScheduler 创建 Scheduler 实例
-func NewScheduler(svc StockService, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo) *Scheduler {
-	return &Scheduler{
+func NewScheduler(svc StockService, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo) Scheduler {
+	return &stockScheduler{
 		svc:        svc,
 		dailyRepo:  dailyRepo,
 		weeklyRepo: weeklyRepo,
@@ -31,16 +37,16 @@ func NewScheduler(svc StockService, dailyRepo data.StockKlineDailyRepo, weeklyRe
 }
 
 // Start 启动调度器，按指定时间每天执行扫描
-func (s *Scheduler) Start(ctx context.Context, hour, minute int) {
+func (s *stockScheduler) Start(ctx context.Context, hour, minute int) {
 	go s.run(ctx, hour, minute)
 }
 
 // Stop 停止调度器
-func (s *Scheduler) Stop() {
+func (s *stockScheduler) Stop() {
 	close(s.stopCh)
 }
 
-func (s *Scheduler) run(ctx context.Context, hour, minute int) {
+func (s *stockScheduler) run(ctx context.Context, hour, minute int) {
 	for {
 		nextRun := nextDailyTime(hour, minute)
 		wait := time.Until(nextRun)
@@ -62,13 +68,13 @@ func (s *Scheduler) run(ctx context.Context, hour, minute int) {
 }
 
 // TriggerNow 手动触发一次扫描（供 API 调用）
-func (s *Scheduler) TriggerNow(ctx context.Context) error {
+func (s *stockScheduler) TriggerNow(ctx context.Context) error {
 	log.Println("[scheduler] manual trigger started")
 	s.scanAndConsume(ctx)
 	return nil
 }
 
-func (s *Scheduler) scanAndConsume(ctx context.Context) {
+func (s *stockScheduler) scanAndConsume(ctx context.Context) {
 	tasks, err := s.scan(ctx)
 	if err != nil {
 		log.Printf("[scheduler] scan failed: %v", err)
@@ -107,7 +113,7 @@ func (s *Scheduler) scanAndConsume(ctx context.Context) {
 }
 
 // scan 扫描所有股票代码，返回需要更新的任务列表
-func (s *Scheduler) scan(ctx context.Context) ([]task, error) {
+func (s *stockScheduler) scan(ctx context.Context) ([]task, error) {
 	dailyCodes, err := s.dailyRepo.FindAllCodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find daily codes failed: %w", err)
@@ -144,7 +150,7 @@ func (s *Scheduler) scan(ctx context.Context) ([]task, error) {
 	return tasks, nil
 }
 
-func (s *Scheduler) checkCode(ctx context.Context, code, today, lastFriday string) (bool, bool, error) {
+func (s *stockScheduler) checkCode(ctx context.Context, code, today, lastFriday string) (bool, bool, error) {
 	var needDaily bool
 	latestDaily, err := s.dailyRepo.FindLatestByCode(ctx, code)
 	if err != nil {
@@ -164,7 +170,7 @@ func (s *Scheduler) checkCode(ctx context.Context, code, today, lastFriday strin
 	return needDaily, needWeekly, nil
 }
 
-func (s *Scheduler) process(ctx context.Context, t task) error {
+func (s *stockScheduler) process(ctx context.Context, t task) error {
 	if t.needDaily {
 		return s.svc.SaveHistoricalData(ctx, t.code)
 	}
