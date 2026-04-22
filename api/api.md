@@ -200,3 +200,38 @@ curl "http://localhost:8080/api/stocks/analysis?code=600312"
   "data": null
 }
 ```
+
+---
+
+### 3. 补全股票数据
+
+手动触发扫描，检查 daily 和 weekly 表中所有股票代码的数据完整性，自动补充缺失的日线和周线数据。
+
+- **Method**: `POST`
+- **Path**: `/api/stocks/append`
+
+#### 请求示例
+
+```bash
+curl -X POST http://localhost:8080/api/stocks/append
+```
+
+#### 成功响应
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": null
+}
+```
+
+#### 错误响应
+
+```json
+{
+  "code": 500,
+  "message": "trigger failed",
+  "data": null
+}
+```
