@@ -16,6 +16,8 @@ type StockKlineWeeklyRepo interface {
 	Upsert(ctx context.Context, klines []*model.StockKlineWeekly) error
 	FindByID(ctx context.Context, id uint) (*model.StockKlineWeekly, error)
 	FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineWeekly, error)
+	FindLatestByCode(ctx context.Context, code string) (*model.StockKlineWeekly, error)
+	FindAllCodes(ctx context.Context) ([]string, error)
 	Update(ctx context.Context, kline *model.StockKlineWeekly) error
 	Delete(ctx context.Context, id uint) error
 	List(ctx context.Context, limit, offset int) ([]*model.StockKlineWeekly, error)
@@ -77,6 +79,24 @@ func (r *stockKlineWeeklyRepo) Update(ctx context.Context, kline *model.StockKli
 // Delete 软删除指定周线记录
 func (r *stockKlineWeeklyRepo) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Delete(&model.StockKlineWeekly{}, id).Error
+}
+
+// FindLatestByCode 查询指定代码最新一条周线（按日期降序）
+func (r *stockKlineWeeklyRepo) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineWeekly, error) {
+	var kline model.StockKlineWeekly
+	if err := r.db.WithContext(ctx).Where("code = ?", code).Order("date DESC").First(&kline).Error; err != nil {
+		return nil, err
+	}
+	return &kline, nil
+}
+
+// FindAllCodes 查询所有 distinct 的股票代码
+func (r *stockKlineWeeklyRepo) FindAllCodes(ctx context.Context) ([]string, error) {
+	var codes []string
+	if err := r.db.WithContext(ctx).Model(&model.StockKlineWeekly{}).Distinct("code").Pluck("code", &codes).Error; err != nil {
+		return nil, err
+	}
+	return codes, nil
 }
 
 // List 分页查询所有周线数据
