@@ -13,7 +13,9 @@ trading/
 │   └── config.go            # 配置结构体定义与加载
 ├── model/                   # 数据模型层
 │   ├── README.md            # Model 规范（进入该目录时必须优先读取）
-│   └── stock_kline.go       # StockKline K线数据模型（GORM），code+date 联合唯一索引
+│   ├── stock_kline.go       # 通用 K 线数据模型（GORM）
+│   ├── stock_kline_daily.go # 日线数据模型（表 t_stock_kline_daily）
+│   └── stock_kline_weekly.go # 周线数据模型（表 t_stock_kline_weekly）
 ├── data/                    # 数据访问层（Repository）
 │   ├── data.go              # Data 入口，管理数据库连接与各模型 Repo
 │   └── stock_kline.go       # StockKline CRUD 接口与实现（含 Upsert）

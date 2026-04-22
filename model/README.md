@@ -15,3 +15,5 @@
    - 统一加 `t_` 前缀
    - 使用小写下划线命名（snake_case）
    - 示例：`StockKline` → `t_stock_kline`
+
+4. **一张表一个文件**
