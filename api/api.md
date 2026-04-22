@@ -66,31 +66,23 @@ curl -X POST http://localhost:8080/api/stocks/historical \
 
 ---
 
-### 2. 查询股票数据
+### 2. 查询股票分析数据
 
-从数据库读取指定股票的 K 线数据，支持按时间粒度聚合。
+从数据库读取指定股票的日线、周线 K 线数据，并计算 MACD、KDJ 技术指标。
 
 - **Method**: `GET`
-- **Path**: `/api/stocks/data`
+- **Path**: `/api/stocks/analysis`
 
 #### 查询参数
 
-| 字段   | 类型   | 必填 | 默认值 | 说明                                                          |
-|--------|--------|------|--------|---------------------------------------------------------------|
-| code   | string | 是   | -      | 股票代码，如 `600312`                                         |
-| scale  | int    | 否   | 240    | 时间粒度（分钟），必须是 240 的倍数，如 240、480、720 等       |
-| len    | int    | 否   | 240    | 返回最大条数                                                  |
-
-> **说明**：数据源中的原始数据为 240 分钟（日线）级别，`scale` 通过将多条原始数据聚合实现。例如 `scale=480` 表示每 2 条原始数据聚合成一条返回。
+| 字段 | 类型   | 必填 | 说明                  |
+|------|--------|------|-----------------------|
+| code | string | 是   | 股票代码，如 `600312` |
 
 #### 请求示例
 
 ```bash
-# 默认参数
-curl "http://localhost:8080/api/stocks/data?code=600312"
-
-# 指定聚合粒度与返回条数
-curl "http://localhost:8080/api/stocks/data?code=600312&scale=480&len=100"
+curl "http://localhost:8080/api/stocks/analysis?code=600312"
 ```
 
 #### 成功响应
@@ -99,31 +91,105 @@ curl "http://localhost:8080/api/stocks/data?code=600312&scale=480&len=100"
 {
   "code": 0,
   "message": "success",
-  "data": [
-    {
-      "code": "600312",
-      "date": "2025-04-21 15:00:00",
-      "open": 24.5000,
-      "high": 25.1200,
-      "low": 24.3000,
-      "close": 24.9800,
-      "volume": 12345678
-    }
-  ]
+  "data": {
+    "daily": [
+      {
+        "code": "600312",
+        "date": "2025-04-21",
+        "open": 24.5000,
+        "high": 25.1200,
+        "low": 24.3000,
+        "close": 24.9800,
+        "volume": 12345678
+      }
+    ],
+    "weekly": [
+      {
+        "code": "600312",
+        "date": "2025-04-18",
+        "open": 23.8000,
+        "high": 25.5000,
+        "low": 23.5000,
+        "close": 24.9800,
+        "volume": 56789012
+      }
+    ],
+    "daily_macd": [
+      {
+        "date": "2025-04-21",
+        "dif": 0.5234,
+        "dea": 0.4123,
+        "bar": 0.2222
+      }
+    ],
+    "weekly_macd": [
+      {
+        "date": "2025-04-18",
+        "dif": 0.3456,
+        "dea": 0.2345,
+        "bar": 0.2222
+      }
+    ],
+    "daily_kdj": [
+      {
+        "date": "2025-04-21",
+        "k": 65.4321,
+        "d": 58.7654,
+        "j": 78.7654
+      }
+    ],
+    "weekly_kdj": [
+      {
+        "date": "2025-04-18",
+        "k": 55.5555,
+        "d": 50.0000,
+        "j": 66.6666
+      }
+    ]
+  }
 }
 ```
 
 #### 响应字段说明
 
-| 字段   | 类型    | 说明               |
-|--------|---------|--------------------|
-| code   | string  | 股票代码           |
-| date   | string  | 日期时间           |
-| open   | float64 | 开盘价             |
-| high   | float64 | 最高价             |
-| low    | float64 | 最低价             |
-| close  | float64 | 收盘价             |
-| volume | int64   | 成交量             |
+| 字段        | 类型    | 说明                          |
+|-------------|---------|-------------------------------|
+| daily       | array   | 日线 K 线数据（最近 100 条）  |
+| weekly      | array   | 周线 K 线数据（最近 50 条）   |
+| daily_macd  | array   | 日线 MACD 指标                |
+| weekly_macd | array   | 周线 MACD 指标                |
+| daily_kdj   | array   | 日线 KDJ 指标                 |
+| weekly_kdj  | array   | 周线 KDJ 指标                 |
+
+**K 线字段**
+
+| 字段   | 类型    | 说明     |
+|--------|---------|----------|
+| code   | string  | 股票代码 |
+| date   | string  | 日期     |
+| open   | float64 | 开盘价   |
+| high   | float64 | 最高价   |
+| low    | float64 | 最低价   |
+| close  | float64 | 收盘价   |
+| volume | int64   | 成交量   |
+
+**MACD 字段**
+
+| 字段 | 类型    | 说明                  |
+|------|---------|-----------------------|
+| date | string  | 日期                  |
+| dif  | float64 | DIF 线（EMA12 - EMA26）|
+| dea  | float64 | DEA 线（DIF 的 EMA9）  |
+| bar  | float64 | 柱状图（2 * (DIF - DEA)）|
+
+**KDJ 字段**
+
+| 字段 | 类型    | 说明          |
+|------|---------|---------------|
+| date | string  | 日期          |
+| k    | float64 | K 值          |
+| d    | float64 | D 值          |
+| j    | float64 | J 值（3K - 2D）|
 
 #### 错误响应
 
