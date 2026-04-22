@@ -152,6 +152,31 @@ func ComputeKDJ(klines []*model.StockKline) []KDJResult {
 	return results
 }
 
+// ComputeMA 计算简单移动平均（SMA）
+// periods 为周期列表，如 []int{10, 20, 60}
+// 返回每个周期对应的 MA 数组，键为周期
+func ComputeMA(closes []float64, periods []int) map[int][]float64 {
+	result := make(map[int][]float64, len(periods))
+	for _, p := range periods {
+		ma := make([]float64, len(closes))
+		for i := range closes {
+			start := 0
+			if i >= p-1 {
+				start = i - p + 1
+			}
+			sum := 0.0
+			count := 0
+			for j := start; j <= i; j++ {
+				sum += closes[j]
+				count++
+			}
+			ma[i] = round4(sum / float64(count))
+		}
+		result[p] = ma
+	}
+	return result
+}
+
 func round4(v float64) float64 {
 	return math.Round(v*10000) / 10000
 }

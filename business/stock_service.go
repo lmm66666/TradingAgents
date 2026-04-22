@@ -12,30 +12,16 @@ import (
 	"trading/pkg/utils"
 )
 
-// MACDPoint MACD 指标点
-type MACDPoint struct {
-	DIF float64 `json:"dif"`
-	DEA float64 `json:"dea"`
-	BAR float64 `json:"bar"`
-}
-
-// KDJPoint KDJ 指标点
-type KDJPoint struct {
-	K float64 `json:"k"`
-	D float64 `json:"d"`
-	J float64 `json:"j"`
-}
-
-// AnalysisItem 按时间点聚合的分析数据（K线 + MACD + KDJ）
+// AnalysisItem 按时间点聚合的精简分析数据
 type AnalysisItem struct {
-	Date   string    `json:"date"`
-	Open   float64   `json:"open"`
-	High   float64   `json:"high"`
-	Low    float64   `json:"low"`
-	Close  float64   `json:"close"`
-	Volume int64     `json:"volume"`
-	KDJ    KDJPoint  `json:"kdj"`
-	MACD   MACDPoint `json:"macd"`
+	Date   string  `json:"date"`
+	Price  float64 `json:"price"`
+	Volume int64   `json:"volume"`
+	J      float64 `json:"j"`
+	DEA    float64 `json:"dea"`
+	MA10   float64 `json:"ma10"`
+	MA20   float64 `json:"ma20"`
+	MA60   float64 `json:"ma60"`
 }
 
 type StockAnalysisData struct {
@@ -116,24 +102,35 @@ func (s *stockService) GetStockAnalysisData(ctx context.Context, code string) (*
 	dailyKDJ := utils.ComputeKDJ(dailyKlines)
 	weeklyKDJ := utils.ComputeKDJ(weeklyKlines)
 
+	dailyMA := utils.ComputeMA(extractCloses(dailyKlines), []int{10, 20, 60})
+	weeklyMA := utils.ComputeMA(extractCloses(weeklyKlines), []int{10, 20, 60})
+
 	return &StockAnalysisData{
-		Daily:  buildAnalysisItems(dailyKlines, dailyMACD, dailyKDJ),
-		Weekly: buildAnalysisItems(weeklyKlines, weeklyMACD, weeklyKDJ),
+		Daily:  buildAnalysisItems(dailyKlines, dailyMACD, dailyKDJ, dailyMA),
+		Weekly: buildAnalysisItems(weeklyKlines, weeklyMACD, weeklyKDJ, weeklyMA),
 	}, nil
 }
 
-func buildAnalysisItems(klines []*model.StockKline, macd []utils.MACDResult, kdj []utils.KDJResult) []AnalysisItem {
+func extractCloses(klines []*model.StockKline) []float64 {
+	closes := make([]float64, len(klines))
+	for i, k := range klines {
+		closes[i] = k.Close
+	}
+	return closes
+}
+
+func buildAnalysisItems(klines []*model.StockKline, macd []utils.MACDResult, kdj []utils.KDJResult, ma map[int][]float64) []AnalysisItem {
 	result := make([]AnalysisItem, len(klines))
 	for i, k := range klines {
 		result[i] = AnalysisItem{
 			Date:   k.Date,
-			Open:   k.Open,
-			High:   k.High,
-			Low:    k.Low,
-			Close:  k.Close,
+			Price:  k.Close,
 			Volume: k.Volume,
-			KDJ:    KDJPoint{K: kdj[i].K, D: kdj[i].D, J: kdj[i].J},
-			MACD:   MACDPoint{DIF: macd[i].DIF, DEA: macd[i].DEA, BAR: macd[i].BAR},
+			J:      kdj[i].J,
+			DEA:    macd[i].DEA,
+			MA10:   ma[10][i],
+			MA20:   ma[20][i],
+			MA60:   ma[60][i],
 		}
 	}
 	return result
