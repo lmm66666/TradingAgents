@@ -48,13 +48,24 @@ func (s *Scheduler) run(ctx context.Context, hour, minute int) {
 
 		select {
 		case <-time.After(wait):
-			s.scanAndConsume(ctx)
+			if isWeekday(time.Now()) {
+				s.scanAndConsume(ctx)
+			} else {
+				log.Println("[scheduler] skipped: not a weekday")
+			}
 		case <-s.stopCh:
 			return
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+// TriggerNow 手动触发一次扫描（供 API 调用）
+func (s *Scheduler) TriggerNow(ctx context.Context) error {
+	log.Println("[scheduler] manual trigger started")
+	s.scanAndConsume(ctx)
+	return nil
 }
 
 func (s *Scheduler) scanAndConsume(ctx context.Context) {
@@ -190,4 +201,10 @@ func lastFridayDate(t time.Time) string {
 		daysBack = 0
 	}
 	return t.Add(-time.Duration(daysBack) * 24 * time.Hour).Format("2006-01-02")
+}
+
+// isWeekday 判断是否为工作日（周一到周五）
+func isWeekday(t time.Time) bool {
+	wd := t.Weekday()
+	return wd != time.Saturday && wd != time.Sunday
 }
