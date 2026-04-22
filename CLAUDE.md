@@ -26,9 +26,16 @@ trading/
 │   └── scheduler_test.go
 ├── api/                     # HTTP API 层（gin）
 │   ├── api.md               # API 接口文档（含 curl 示例）
+│   ├── README.md            # API 规范（一个接口一个文件）
 │   ├── router.go            # gin 路由注册
-│   ├── stock_handler.go     # HTTP handler（统一 JSON 响应格式）
-│   └── stock_handler_test.go
+│   ├── handler.go           # 公共 handler 结构体与响应方法
+│   ├── handler_test.go      # 公共 mock 与测试工具
+│   ├── stock_historical.go  # POST /api/stocks/historical
+│   ├── stock_historical_test.go
+│   ├── stock_analysis.go    # GET /api/stocks/analysis
+│   ├── stock_analysis_test.go
+│   ├── stock_append.go      # POST /api/stocks/append
+│   └── stock_append_test.go
 ├── pkg/
 │   ├── broker/              # 行情数据提供者
 │   │   ├── broker.go        # IBroker 统一接口
