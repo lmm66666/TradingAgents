@@ -10,9 +10,12 @@ trading/
 ├── model/                   # 数据模型层
 │   ├── README.md            # Model 规范（进入该目录时必须优先读取）
 │   └── stock_kline.go       # StockKline K线数据模型（GORM）
+├── data/                    # 数据访问层（Repository）
+│   ├── data.go              # Data 入口，管理数据库连接与各模型 Repo
+│   └── stock_kline.go       # StockKline CRUD 接口与实现
 └── pkg/broker/              # 行情数据提供者
-    ├── broker.go            # MarketDataProvider 统一接口
-    ├── sina.go              # SinaProvider（新浪财经实现）
+    ├── broker.go            # IBroker 统一接口
+    ├── sina.go              # SinaBroker（新浪财经实现）
     └── sina_test.go         # 接口测试
 ```
 
@@ -29,3 +32,8 @@ trading/
 
 ## Git 提交
 - 遵循 Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`
+- 必须使用英文，禁止中文 
+- 冒号后必须加空格 
+- 句尾不加标点
+- 一个 commit 等于一件事，多件事拆分到多个 commit 中
+- 简短清晰，不超过 50 字符
