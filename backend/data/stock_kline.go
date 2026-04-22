@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"trading/model"
 )
@@ -12,6 +13,7 @@ import (
 type StockKlineRepo interface {
 	Create(ctx context.Context, kline *model.StockKline) error
 	CreateBatch(ctx context.Context, klines []*model.StockKline) error
+	Upsert(ctx context.Context, klines []*model.StockKline) error
 	FindByID(ctx context.Context, id uint) (*model.StockKline, error)
 	FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKline, error)
 	Update(ctx context.Context, kline *model.StockKline) error
@@ -35,6 +37,14 @@ func (r *stockKlineRepo) Create(ctx context.Context, kline *model.StockKline) er
 // CreateBatch 批量插入 K 线数据
 func (r *stockKlineRepo) CreateBatch(ctx context.Context, klines []*model.StockKline) error {
 	return r.db.WithContext(ctx).CreateInBatches(klines, 100).Error
+}
+
+// Upsert 批量插入或更新 K 线数据（code+date 联合唯一）
+func (r *stockKlineRepo) Upsert(ctx context.Context, klines []*model.StockKline) error {
+	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "code"}, {Name: "date"}},
+		DoUpdates: clause.AssignmentColumns([]string{"open", "high", "low", "close", "volume", "updated_at"}),
+	}).CreateInBatches(klines, 100).Error
 }
 
 // FindByID 根据主键查询

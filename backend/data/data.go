@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"trading/config"
+	"trading/model"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -21,6 +22,10 @@ func New(cfg *config.DB) (*Data, error) {
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("open mysql failed: %w", err)
+	}
+
+	if err := db.AutoMigrate(&model.StockKline{}); err != nil {
+		return nil, fmt.Errorf("auto migrate failed: %w", err)
 	}
 
 	return &Data{db: db}, nil
