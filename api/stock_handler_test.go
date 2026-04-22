@@ -12,8 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"trading/business"
-	"trading/model"
-	"trading/pkg/utils"
 )
 
 // mockStockService 模拟 StockService
@@ -98,14 +96,10 @@ func TestSaveStockHistoricalDataServiceError(t *testing.T) {
 func TestGetStockAnalysisDataSuccess(t *testing.T) {
 	svc := &mockStockService{
 		analysis: &business.StockAnalysisData{
-			Daily: []*model.StockKline{
-				{Code: "000001", Date: "2025-04-21", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
+			Daily: []business.AnalysisItem{
+				{Date: "2025-04-21", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100, KDJ: business.KDJPoint{K: 50, D: 50, J: 50}, MACD: business.MACDPoint{DIF: 0.1, DEA: 0.05, BAR: 0.1}},
 			},
-			Weekly:     []*model.StockKline{},
-			DailyMACD:  []utils.MACDResult{},
-			WeeklyMACD: []utils.MACDResult{},
-			DailyKDJ:   []utils.KDJResult{},
-			WeeklyKDJ:  []utils.KDJResult{},
+			Weekly: []business.AnalysisItem{},
 		},
 	}
 	r := setupTestRouter(svc)

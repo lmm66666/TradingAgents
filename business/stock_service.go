@@ -12,13 +12,35 @@ import (
 	"trading/pkg/utils"
 )
 
+// MACDPoint MACD 指标点
+type MACDPoint struct {
+	DIF float64 `json:"dif"`
+	DEA float64 `json:"dea"`
+	BAR float64 `json:"bar"`
+}
+
+// KDJPoint KDJ 指标点
+type KDJPoint struct {
+	K float64 `json:"k"`
+	D float64 `json:"d"`
+	J float64 `json:"j"`
+}
+
+// AnalysisItem 按时间点聚合的分析数据（K线 + MACD + KDJ）
+type AnalysisItem struct {
+	Date   string    `json:"date"`
+	Open   float64   `json:"open"`
+	High   float64   `json:"high"`
+	Low    float64   `json:"low"`
+	Close  float64   `json:"close"`
+	Volume int64     `json:"volume"`
+	KDJ    KDJPoint  `json:"kdj"`
+	MACD   MACDPoint `json:"macd"`
+}
+
 type StockAnalysisData struct {
-	Daily      []*model.StockKline `json:"daily"`
-	Weekly     []*model.StockKline `json:"weekly"`
-	DailyMACD  []utils.MACDResult  `json:"daily_macd"`
-	WeeklyMACD []utils.MACDResult  `json:"weekly_macd"`
-	DailyKDJ   []utils.KDJResult   `json:"daily_kdj"`
-	WeeklyKDJ  []utils.KDJResult   `json:"weekly_kdj"`
+	Daily  []AnalysisItem `json:"daily"`
+	Weekly []AnalysisItem `json:"weekly"`
 }
 
 type StockService interface {
@@ -89,14 +111,32 @@ func (s *stockService) GetStockAnalysisData(ctx context.Context, code string) (*
 	dailyKlines := dailyToKlines(dailies)
 	weeklyKlines := weeklyToKlines(weeklies)
 
+	dailyMACD := utils.ComputeMACD(dailyKlines)
+	weeklyMACD := utils.ComputeMACD(weeklyKlines)
+	dailyKDJ := utils.ComputeKDJ(dailyKlines)
+	weeklyKDJ := utils.ComputeKDJ(weeklyKlines)
+
 	return &StockAnalysisData{
-		Daily:      dailyKlines,
-		Weekly:     weeklyKlines,
-		DailyMACD:  utils.ComputeMACD(dailyKlines),
-		WeeklyMACD: utils.ComputeMACD(weeklyKlines),
-		DailyKDJ:   utils.ComputeKDJ(dailyKlines),
-		WeeklyKDJ:  utils.ComputeKDJ(weeklyKlines),
+		Daily:  buildAnalysisItems(dailyKlines, dailyMACD, dailyKDJ),
+		Weekly: buildAnalysisItems(weeklyKlines, weeklyMACD, weeklyKDJ),
 	}, nil
+}
+
+func buildAnalysisItems(klines []*model.StockKline, macd []utils.MACDResult, kdj []utils.KDJResult) []AnalysisItem {
+	result := make([]AnalysisItem, len(klines))
+	for i, k := range klines {
+		result[i] = AnalysisItem{
+			Date:   k.Date,
+			Open:   k.Open,
+			High:   k.High,
+			Low:    k.Low,
+			Close:  k.Close,
+			Volume: k.Volume,
+			KDJ:    KDJPoint{K: kdj[i].K, D: kdj[i].D, J: kdj[i].J},
+			MACD:   MACDPoint{DIF: macd[i].DIF, DEA: macd[i].DEA, BAR: macd[i].BAR},
+		}
+	}
+	return result
 }
 
 // toSymbol 将纯数字 code 转换为带前缀的 symbol
