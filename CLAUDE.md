@@ -18,7 +18,8 @@ trading/
 │   └── stock_kline_weekly.go # 周线数据模型（表 t_stock_kline_weekly）
 ├── data/                    # 数据访问层（Repository）
 │   ├── data.go              # Data 入口，管理数据库连接与各模型 Repo
-│   └── stock_kline.go       # StockKline CRUD 接口与实现（含 Upsert）
+│   ├── stock_kline_daily.go # 日线数据仓库接口与实现
+│   └── stock_kline_weekly.go # 周线数据仓库接口与实现
 ├── business/                # 业务逻辑层
 │   ├── stock_service.go     # StockService 接口与实现（聚合、清洗、调用 broker/repo）
 │   ├── stock_service_test.go

@@ -94,56 +94,26 @@ curl "http://localhost:8080/api/stocks/analysis?code=600312"
   "data": {
     "daily": [
       {
-        "code": "600312",
         "date": "2025-04-21",
-        "open": 24.5000,
-        "high": 25.1200,
-        "low": 24.3000,
-        "close": 24.9800,
-        "volume": 12345678
+        "price": 24.9800,
+        "volume": 12345678,
+        "j": 78.7654,
+        "dea": 0.4123,
+        "ma5": 24.5000,
+        "ma20": 23.8000,
+        "ma60": 22.5000
       }
     ],
     "weekly": [
       {
-        "code": "600312",
         "date": "2025-04-18",
-        "open": 23.8000,
-        "high": 25.5000,
-        "low": 23.5000,
-        "close": 24.9800,
-        "volume": 56789012
-      }
-    ],
-    "daily_macd": [
-      {
-        "date": "2025-04-21",
-        "dif": 0.5234,
-        "dea": 0.4123,
-        "bar": 0.2222
-      }
-    ],
-    "weekly_macd": [
-      {
-        "date": "2025-04-18",
-        "dif": 0.3456,
+        "price": 24.9800,
+        "volume": 56789012,
+        "j": 66.6666,
         "dea": 0.2345,
-        "bar": 0.2222
-      }
-    ],
-    "daily_kdj": [
-      {
-        "date": "2025-04-21",
-        "k": 65.4321,
-        "d": 58.7654,
-        "j": 78.7654
-      }
-    ],
-    "weekly_kdj": [
-      {
-        "date": "2025-04-18",
-        "k": 55.5555,
-        "d": 50.0000,
-        "j": 66.6666
+        "ma5": 24.2000,
+        "ma20": 23.5000,
+        "ma60": 21.8000
       }
     ]
   }
@@ -152,44 +122,23 @@ curl "http://localhost:8080/api/stocks/analysis?code=600312"
 
 #### 响应字段说明
 
-| 字段        | 类型    | 说明                          |
-|-------------|---------|-------------------------------|
-| daily       | array   | 日线 K 线数据（最近 100 条）  |
-| weekly      | array   | 周线 K 线数据（最近 50 条）   |
-| daily_macd  | array   | 日线 MACD 指标                |
-| weekly_macd | array   | 周线 MACD 指标                |
-| daily_kdj   | array   | 日线 KDJ 指标                 |
-| weekly_kdj  | array   | 周线 KDJ 指标                 |
+| 字段   | 类型    | 说明                          |
+|--------|---------|-------------------------------|
+| daily  | array   | 日线分析数据（最近 100 条）   |
+| weekly | array   | 周线分析数据（最近 50 条）    |
 
-**K 线字段**
+**分析数据字段**
 
-| 字段   | 类型    | 说明     |
-|--------|---------|----------|
-| code   | string  | 股票代码 |
-| date   | string  | 日期     |
-| open   | float64 | 开盘价   |
-| high   | float64 | 最高价   |
-| low    | float64 | 最低价   |
-| close  | float64 | 收盘价   |
-| volume | int64   | 成交量   |
-
-**MACD 字段**
-
-| 字段 | 类型    | 说明                  |
-|------|---------|-----------------------|
-| date | string  | 日期                  |
-| dif  | float64 | DIF 线（EMA12 - EMA26）|
-| dea  | float64 | DEA 线（DIF 的 EMA9）  |
-| bar  | float64 | 柱状图（2 * (DIF - DEA)）|
-
-**KDJ 字段**
-
-| 字段 | 类型    | 说明          |
-|------|---------|---------------|
-| date | string  | 日期          |
-| k    | float64 | K 值          |
-| d    | float64 | D 值          |
-| j    | float64 | J 值（3K - 2D）|
+| 字段   | 类型    | 说明                  |
+|--------|---------|-----------------------|
+| date   | string  | 日期                  |
+| price  | float64 | 收盘价                |
+| volume | int64   | 成交量                |
+| j      | float64 | KDJ 的 J 值（3K - 2D）|
+| dea    | float64 | MACD 的 DEA 线        |
+| ma5    | float64 | 5 日均线              |
+| ma20   | float64 | 20 日均线             |
+| ma60   | float64 | 60 日均线             |
 
 #### 错误响应
 
