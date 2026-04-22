@@ -1,15 +1,29 @@
 package data
 
-import "gorm.io/gorm"
+import (
+	"fmt"
 
-// Data 持有数据库连接，提供各模型 Repository 的入口
+	"trading/config"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
+
 type Data struct {
 	db *gorm.DB
 }
 
-// New 创建 Data 实例
-func New(db *gorm.DB) *Data {
-	return &Data{db: db}
+// New 创建 Data 实例，内部根据配置初始化 gorm.DB 连接
+func New(cfg *config.DB) (*Data, error) {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName)
+
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("open mysql failed: %w", err)
+	}
+
+	return &Data{db: db}, nil
 }
 
 // DB 返回底层 gorm.DB 实例
