@@ -5,14 +5,23 @@
 
 ```
 trading/
-├── go.mod / go.sum          # Go 模块（go 1.25.7，依赖 gorm、x/text）
-├── main.go                  # 程序入口（当前为占位）
+├── go.mod / go.sum          # Go 模块（go 1.25.7，依赖 gin、gorm、x/text）
+├── main.go                  # 程序入口（初始化各层并启动 gin server）
+├── config/
+│   └── config.go            # 配置结构体（DB 连接等）
 ├── model/                   # 数据模型层
 │   ├── README.md            # Model 规范（进入该目录时必须优先读取）
-│   └── stock_kline.go       # StockKline K线数据模型（GORM）
+│   └── stock_kline.go       # StockKline K线数据模型（GORM），code+date 联合唯一索引
 ├── data/                    # 数据访问层（Repository）
 │   ├── data.go              # Data 入口，管理数据库连接与各模型 Repo
-│   └── stock_kline.go       # StockKline CRUD 接口与实现
+│   └── stock_kline.go       # StockKline CRUD 接口与实现（含 Upsert）
+├── business/                # 业务逻辑层
+│   ├── stock_service.go     # StockService 接口与实现（聚合、清洗、调用 broker/repo）
+│   └── stock_service_test.go
+├── api/                     # HTTP API 层（gin）
+│   ├── router.go            # gin 路由注册
+│   ├── stock_handler.go     # HTTP handler（统一 JSON 响应格式）
+│   └── stock_handler_test.go
 └── pkg/broker/              # 行情数据提供者
     ├── broker.go            # IBroker 统一接口
     ├── sina.go              # SinaBroker（新浪财经实现）
