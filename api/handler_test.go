@@ -23,6 +23,10 @@ func (m *mockStockService) GetStockAnalysisData(ctx context.Context, code string
 	return m.analysis, m.getErr
 }
 
+func (m *mockStockService) AppendStockData(ctx context.Context, code string) error {
+	return m.saveErr
+}
+
 // mockScheduler 模拟调度器
 type mockScheduler struct {
 	triggerErr error

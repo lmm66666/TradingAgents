@@ -19,7 +19,7 @@ type AnalysisItem struct {
 	Volume int64   `json:"volume"`
 	J      float64 `json:"j"`
 	DEA    float64 `json:"dea"`
-	MA10   float64 `json:"ma10"`
+	MA5    float64 `json:"ma5"`
 	MA20   float64 `json:"ma20"`
 	MA60   float64 `json:"ma60"`
 }
@@ -32,6 +32,7 @@ type StockAnalysisData struct {
 type StockService interface {
 	SaveHistoricalData(ctx context.Context, code string) error
 	GetStockAnalysisData(ctx context.Context, code string) (*StockAnalysisData, error)
+	AppendStockData(ctx context.Context, code string) error
 }
 
 type stockService struct {
@@ -102,8 +103,8 @@ func (s *stockService) GetStockAnalysisData(ctx context.Context, code string) (*
 	dailyKDJ := utils.ComputeKDJ(dailyKlines)
 	weeklyKDJ := utils.ComputeKDJ(weeklyKlines)
 
-	dailyMA := utils.ComputeMA(extractCloses(dailyKlines), []int{10, 20, 60})
-	weeklyMA := utils.ComputeMA(extractCloses(weeklyKlines), []int{10, 20, 60})
+	dailyMA := utils.ComputeMA(extractCloses(dailyKlines), []int{5, 20, 60})
+	weeklyMA := utils.ComputeMA(extractCloses(weeklyKlines), []int{5, 20, 60})
 
 	return &StockAnalysisData{
 		Daily:  buildAnalysisItems(dailyKlines, dailyMACD, dailyKDJ, dailyMA),
@@ -128,9 +129,84 @@ func buildAnalysisItems(klines []*model.StockKline, macd []utils.MACDResult, kdj
 			Volume: k.Volume,
 			J:      kdj[i].J,
 			DEA:    macd[i].DEA,
-			MA10:   ma[10][i],
+			MA5:    ma[5][i],
 			MA20:   ma[20][i],
 			MA60:   ma[60][i],
+		}
+	}
+	return result
+}
+
+// AppendStockData 增量拉取并保存缺失的股票数据
+// 对比数据库最新日期，只拉取并保存新增的数据，避免全量 upsert 导致的主键冲突
+func (s *stockService) AppendStockData(ctx context.Context, code string) error {
+	symbol, err := toSymbol(code)
+	if err != nil {
+		return err
+	}
+
+	if err := s.appendDaily(ctx, symbol, code); err != nil {
+		return err
+	}
+	if err := s.appendWeekly(ctx, symbol, code); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *stockService) appendDaily(ctx context.Context, symbol, code string) error {
+	var lastDate string
+	if latest, err := s.dailyRepo.FindLatestByCode(ctx, code); err == nil {
+		lastDate = latest.Date
+	}
+
+	klines, err := s.broker.GetStockHistorical(ctx, symbol, 240, 30)
+	if err != nil {
+		return fmt.Errorf("fetch daily failed: %w", err)
+	}
+
+	newKlines := filterAfterDate(cleanKlines(klines), lastDate)
+	if len(newKlines) == 0 {
+		return nil
+	}
+
+	if err := s.dailyRepo.Upsert(ctx, toDaily(newKlines)); err != nil {
+		return fmt.Errorf("upsert daily failed: %w", err)
+	}
+	return nil
+}
+
+func (s *stockService) appendWeekly(ctx context.Context, symbol, code string) error {
+	var lastDate string
+	if latest, err := s.weeklyRepo.FindLatestByCode(ctx, code); err == nil {
+		lastDate = latest.Date
+	}
+
+	klines, err := s.broker.GetStockHistorical(ctx, symbol, 1680, 10)
+	if err != nil {
+		return fmt.Errorf("fetch weekly failed: %w", err)
+	}
+
+	newKlines := filterAfterDate(filterIncompleteWeekly(cleanKlines(klines)), lastDate)
+	if len(newKlines) == 0 {
+		return nil
+	}
+
+	if err := s.weeklyRepo.Upsert(ctx, toWeekly(newKlines)); err != nil {
+		return fmt.Errorf("upsert weekly failed: %w", err)
+	}
+	return nil
+}
+
+// filterAfterDate 过滤出日期严格大于 lastDate 的 K 线
+func filterAfterDate(klines []*model.StockKline, lastDate string) []*model.StockKline {
+	if lastDate == "" {
+		return klines
+	}
+	result := make([]*model.StockKline, 0, len(klines))
+	for _, k := range klines {
+		if k.Date > lastDate {
+			result = append(result, k)
 		}
 	}
 	return result

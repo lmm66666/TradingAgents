@@ -14,7 +14,7 @@ func TestGetStockAnalysisDataSuccess(t *testing.T) {
 	svc := &mockStockService{
 		analysis: &business.StockAnalysisData{
 			Daily: []business.AnalysisItem{
-				{Date: "2025-04-21", Price: 1.5, Volume: 100, J: 50, DEA: 0.05, MA10: 1.5, MA20: 1.5, MA60: 1.5},
+				{Date: "2025-04-21", Price: 1.5, Volume: 100, J: 50, DEA: 0.05, MA5: 1.5, MA20: 1.5, MA60: 1.5},
 			},
 			Weekly: []business.AnalysisItem{},
 		},

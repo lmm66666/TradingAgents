@@ -58,15 +58,18 @@ func (r *stockKlineDailyRepo) FindByID(ctx context.Context, id uint) (*model.Sto
 	return &kline, nil
 }
 
-// FindByCode 根据股票代码查询日线，按日期升序
+// FindByCode 根据股票代码查询最近 limit 条日线，按日期升序返回
 func (r *stockKlineDailyRepo) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineDaily, error) {
 	var klines []*model.StockKlineDaily
-	query := r.db.WithContext(ctx).Where("code = ?", code).Order("date ASC")
+	query := r.db.WithContext(ctx).Where("code = ?", code).Order("date DESC")
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
 	if err := query.Find(&klines).Error; err != nil {
 		return nil, err
+	}
+	for i, j := 0, len(klines)-1; i < j; i, j = i+1, j-1 {
+		klines[i], klines[j] = klines[j], klines[i]
 	}
 	return klines, nil
 }

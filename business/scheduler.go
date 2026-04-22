@@ -88,7 +88,7 @@ func (s *stockScheduler) scanAndConsume(ctx context.Context) {
 
 	log.Printf("[scheduler] %d tasks queued, consuming one every %v", len(tasks), s.interval)
 
-	for i, task := range tasks {
+	for i, t := range tasks {
 		select {
 		case <-s.stopCh:
 			return
@@ -97,11 +97,11 @@ func (s *stockScheduler) scanAndConsume(ctx context.Context) {
 		default:
 		}
 
-		log.Printf("[scheduler] [%d/%d] processing %s (daily=%v weekly=%v)", i+1, len(tasks), task.code, task.needDaily, task.needWeekly)
-		if err := s.process(ctx, task); err != nil {
-			log.Printf("[scheduler] [%d/%d] failed %s: %v", i+1, len(tasks), task.code, err)
+		log.Printf("[scheduler] [%d/%d] processing %s (daily=%v weekly=%v)", i+1, len(tasks), t.code, t.needDaily, t.needWeekly)
+		if err = s.process(ctx, t); err != nil {
+			log.Printf("[scheduler] [%d/%d] failed %s: %v", i+1, len(tasks), t.code, err)
 		} else {
-			log.Printf("[scheduler] [%d/%d] success %s", i+1, len(tasks), task.code)
+			log.Printf("[scheduler] [%d/%d] success %s", i+1, len(tasks), t.code)
 		}
 
 		if i < len(tasks)-1 {
@@ -171,11 +171,8 @@ func (s *stockScheduler) checkCode(ctx context.Context, code, today, lastFriday 
 }
 
 func (s *stockScheduler) process(ctx context.Context, t task) error {
-	if t.needDaily {
-		return s.svc.SaveHistoricalData(ctx, t.code)
-	}
-	if t.needWeekly {
-		return s.svc.SaveHistoricalData(ctx, t.code)
+	if t.needDaily || t.needWeekly {
+		return s.svc.AppendStockData(ctx, t.code)
 	}
 	return nil
 }

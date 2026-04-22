@@ -32,6 +32,7 @@ func (m *mockBroker) GetStockHistorical(ctx context.Context, symbol string, scal
 // mockDailyRepo 模拟日线数据仓库
 type mockDailyRepo struct {
 	k       []*model.StockKlineDaily
+	latest  *model.StockKlineDaily
 	findErr error
 	upErr   error
 }
@@ -44,7 +45,10 @@ func (m *mockDailyRepo) FindByCode(ctx context.Context, code string, limit int) 
 	return m.k, m.findErr
 }
 func (m *mockDailyRepo) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineDaily, error) {
-	return nil, nil
+	if m.latest == nil {
+		return nil, errors.New("not found")
+	}
+	return m.latest, nil
 }
 func (m *mockDailyRepo) FindAllCodes(ctx context.Context) ([]string, error) {
 	return nil, nil
@@ -58,6 +62,7 @@ func (m *mockDailyRepo) List(ctx context.Context, limit, offset int) ([]*model.S
 // mockWeeklyRepo 模拟周线数据仓库
 type mockWeeklyRepo struct {
 	k       []*model.StockKlineWeekly
+	latest  *model.StockKlineWeekly
 	findErr error
 	upErr   error
 }
@@ -70,7 +75,10 @@ func (m *mockWeeklyRepo) FindByCode(ctx context.Context, code string, limit int)
 	return m.k, m.findErr
 }
 func (m *mockWeeklyRepo) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineWeekly, error) {
-	return nil, nil
+	if m.latest == nil {
+		return nil, errors.New("not found")
+	}
+	return m.latest, nil
 }
 func (m *mockWeeklyRepo) FindAllCodes(ctx context.Context) ([]string, error) {
 	return nil, nil
@@ -234,5 +242,92 @@ func TestStockServiceGetStockAnalysisDataWeeklyError(t *testing.T) {
 	_, err := svc.GetStockAnalysisData(context.Background(), "000001")
 	if err == nil {
 		t.Fatal("expected error when weekly repo fails")
+	}
+}
+
+// TestAppendStockDataSuccess 增量保存成功，只保存新数据
+func TestAppendStockDataSuccess(t *testing.T) {
+	broker := &mockBroker{
+		dataByScale: map[int][]model.StockKline{
+			240: {
+				{Code: "sh000001", Date: "2025-04-20", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
+				{Code: "sh000001", Date: "2025-04-21", Open: 1.5, High: 3, Low: 1, Close: 2, Volume: 200},
+			},
+			1680: {
+				{Code: "sh000001", Date: "2025-04-18", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
+				{Code: "sh000001", Date: "2025-04-25", Open: 1.5, High: 3, Low: 1, Close: 2, Volume: 200},
+			},
+		},
+	}
+	dailyRepo := &mockDailyRepo{latest: &model.StockKlineDaily{Code: "000001", Date: "2025-04-20"}}
+	weeklyRepo := &mockWeeklyRepo{latest: &model.StockKlineWeekly{Code: "000001", Date: "2025-04-18"}}
+
+	svc := NewStockService(broker, dailyRepo, weeklyRepo)
+	err := svc.AppendStockData(context.Background(), "000001")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+// TestAppendStockDataEmptyDB 数据库为空时全量保存
+func TestAppendStockDataEmptyDB(t *testing.T) {
+	broker := &mockBroker{
+		dataByScale: map[int][]model.StockKline{
+			240:  {{Code: "sh000001", Date: "2025-04-21", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100}},
+			1680: {{Code: "sh000001", Date: "2025-04-18", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100}},
+		},
+	}
+	dailyRepo := &mockDailyRepo{}
+	weeklyRepo := &mockWeeklyRepo{}
+
+	svc := NewStockService(broker, dailyRepo, weeklyRepo)
+	err := svc.AppendStockData(context.Background(), "000001")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+// TestAppendStockDataNoNewData 没有新数据时不报错
+func TestAppendStockDataNoNewData(t *testing.T) {
+	broker := &mockBroker{
+		dataByScale: map[int][]model.StockKline{
+			240:  {{Code: "sh000001", Date: "2025-04-21", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100}},
+			1680: {{Code: "sh000001", Date: "2025-04-18", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100}},
+		},
+	}
+	dailyRepo := &mockDailyRepo{latest: &model.StockKlineDaily{Code: "000001", Date: "2025-04-21"}}
+	weeklyRepo := &mockWeeklyRepo{latest: &model.StockKlineWeekly{Code: "000001", Date: "2025-04-18"}}
+
+	svc := NewStockService(broker, dailyRepo, weeklyRepo)
+	err := svc.AppendStockData(context.Background(), "000001")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+// TestAppendStockDataBrokerError broker 失败
+func TestAppendStockDataBrokerError(t *testing.T) {
+	broker := &mockBroker{historicalErr: errors.New("broker down")}
+	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{})
+
+	err := svc.AppendStockData(context.Background(), "000001")
+	if err == nil {
+		t.Fatal("expected error when broker fails")
+	}
+}
+
+// TestAppendStockDataDailyRepoError 日线 upsert 失败
+func TestAppendStockDataDailyRepoError(t *testing.T) {
+	broker := &mockBroker{
+		dataByScale: map[int][]model.StockKline{
+			240: {{Code: "sh000001", Date: "2025-04-21", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100}},
+		},
+	}
+	dailyRepo := &mockDailyRepo{upErr: errors.New("db down")}
+	svc := NewStockService(broker, dailyRepo, &mockWeeklyRepo{})
+
+	err := svc.AppendStockData(context.Background(), "000001")
+	if err == nil {
+		t.Fatal("expected error when daily repo upsert fails")
 	}
 }
