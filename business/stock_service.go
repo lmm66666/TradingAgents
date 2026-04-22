@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"trading/data"
 	"trading/model"
@@ -17,30 +18,48 @@ type StockService interface {
 }
 
 type stockService struct {
-	broker broker.IBroker
-	repo   data.StockKlineRepo
+	broker     broker.IBroker
+	dailyRepo  data.StockKlineDailyRepo
+	weeklyRepo data.StockKlineWeeklyRepo
 }
 
 // NewStockService 创建 StockService 实例
-func NewStockService(b broker.IBroker, r data.StockKlineRepo) StockService {
-	return &stockService{broker: b, repo: r}
+func NewStockService(b broker.IBroker, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo) StockService {
+	return &stockService{broker: b, dailyRepo: dailyRepo, weeklyRepo: weeklyRepo}
 }
 
 // SaveHistoricalData 从 broker 获取历史数据并保存到 DB
+// 日线保存 1000 个点（scale=240），周线保存 200 个点（scale=1680）
+// 周线最后一条若不是周五则丢弃，避免保存不完整周数据
 func (s *stockService) SaveHistoricalData(ctx context.Context, code string) error {
 	symbol, err := toSymbol(code)
 	if err != nil {
 		return err
 	}
 
-	klines, err := s.broker.GetStockHistorical(ctx, symbol, 240, 300)
+	// 拉取日线
+	dailyKlines, err := s.broker.GetStockHistorical(ctx, symbol, 240, 1000)
 	if err != nil {
-		return fmt.Errorf("fetch historical failed: %w", err)
+		return fmt.Errorf("fetch daily historical failed: %w", err)
 	}
 
-	cleaned := cleanKlines(klines)
-	if err := s.repo.Upsert(ctx, cleaned); err != nil {
-		return fmt.Errorf("upsert failed: %w", err)
+	cleanedDaily := cleanKlines(dailyKlines)
+	daily := toDaily(cleanedDaily)
+	if err := s.dailyRepo.Upsert(ctx, daily); err != nil {
+		return fmt.Errorf("upsert daily failed: %w", err)
+	}
+
+	// 拉取周线
+	weeklyKlines, err := s.broker.GetStockHistorical(ctx, symbol, 1680, 200)
+	if err != nil {
+		return fmt.Errorf("fetch weekly historical failed: %w", err)
+	}
+
+	cleanedWeekly := cleanKlines(weeklyKlines)
+	filteredWeekly := filterIncompleteWeekly(cleanedWeekly)
+	weekly := toWeekly(filteredWeekly)
+	if err := s.weeklyRepo.Upsert(ctx, weekly); err != nil {
+		return fmt.Errorf("upsert weekly failed: %w", err)
 	}
 
 	return nil
@@ -52,10 +71,12 @@ func (s *stockService) GetStockData(ctx context.Context, code string, scale int,
 		length = 240
 	}
 
-	klines, err := s.repo.FindByCode(ctx, code, 0)
+	dailies, err := s.dailyRepo.FindByCode(ctx, code, 0)
 	if err != nil {
-		return nil, fmt.Errorf("find by code failed: %w", err)
+		return nil, fmt.Errorf("find daily by code failed: %w", err)
 	}
+
+	klines := dailyToKlines(dailies)
 
 	groupSize := max(1, scale/240)
 	if groupSize == 1 {
@@ -86,6 +107,85 @@ func cleanKlines(klines []model.StockKline) []*model.StockKline {
 		k.Code = strings.TrimPrefix(k.Code, "sh")
 		k.Code = strings.TrimPrefix(k.Code, "sz")
 		result = append(result, k)
+	}
+	return result
+}
+
+// filterIncompleteWeekly 过滤掉最后一条非周五的周线数据
+// broker 返回的周线若最后一条是周中日期，则为不完整周，应丢弃
+func filterIncompleteWeekly(klines []*model.StockKline) []*model.StockKline {
+	if len(klines) == 0 {
+		return klines
+	}
+
+	last := klines[len(klines)-1]
+	if !isFriday(last.Date) {
+		return klines[:len(klines)-1]
+	}
+	return klines
+}
+
+// isFriday 判断日期字符串是否为周五
+// 支持格式：2006-01-02 或 2006-01-02 15:04:05
+func isFriday(dateStr string) bool {
+	layout := "2006-01-02"
+	if len(dateStr) > 10 {
+		layout = "2006-01-02 15:04:05"
+	}
+	t, err := time.Parse(layout, dateStr)
+	if err != nil {
+		return false
+	}
+	return t.Weekday() == time.Friday
+}
+
+// toDaily 将通用 K 线转换为日线模型
+func toDaily(klines []*model.StockKline) []*model.StockKlineDaily {
+	result := make([]*model.StockKlineDaily, 0, len(klines))
+	for _, k := range klines {
+		result = append(result, &model.StockKlineDaily{
+			Code:   k.Code,
+			Date:   k.Date,
+			Open:   k.Open,
+			High:   k.High,
+			Low:    k.Low,
+			Close:  k.Close,
+			Volume: k.Volume,
+		})
+	}
+	return result
+}
+
+// toWeekly 将通用 K 线转换为周线模型
+func toWeekly(klines []*model.StockKline) []*model.StockKlineWeekly {
+	result := make([]*model.StockKlineWeekly, 0, len(klines))
+	for _, k := range klines {
+		result = append(result, &model.StockKlineWeekly{
+			Code:   k.Code,
+			Date:   k.Date,
+			Open:   k.Open,
+			High:   k.High,
+			Low:    k.Low,
+			Close:  k.Close,
+			Volume: k.Volume,
+		})
+	}
+	return result
+}
+
+// dailyToKlines 将日线模型转换为通用 K 线
+func dailyToKlines(dailies []*model.StockKlineDaily) []*model.StockKline {
+	result := make([]*model.StockKline, 0, len(dailies))
+	for _, d := range dailies {
+		result = append(result, &model.StockKline{
+			Code:   d.Code,
+			Date:   d.Date,
+			Open:   d.Open,
+			High:   d.High,
+			Low:    d.Low,
+			Close:  d.Close,
+			Volume: d.Volume,
+		})
 	}
 	return result
 }

@@ -24,7 +24,7 @@ func New(cfg config.DB) (*Data, error) {
 		return nil, fmt.Errorf("open mysql failed: %w", err)
 	}
 
-	if err := db.AutoMigrate(&model.StockKline{}); err != nil {
+	if err := db.AutoMigrate(&model.StockKlineDaily{}, &model.StockKlineWeekly{}); err != nil {
 		return nil, fmt.Errorf("auto migrate failed: %w", err)
 	}
 
@@ -36,7 +36,12 @@ func (d *Data) DB() *gorm.DB {
 	return d.db
 }
 
-// StockKline 返回 StockKline 的 Repository
-func (d *Data) StockKline() StockKlineRepo {
-	return newStockKlineRepo(d.db)
+// StockKlineDaily 返回日线 Repository
+func (d *Data) StockKlineDaily() StockKlineDailyRepo {
+	return newStockKlineDailyRepo(d.db)
+}
+
+// StockKlineWeekly 返回周线 Repository
+func (d *Data) StockKlineWeekly() StockKlineWeeklyRepo {
+	return newStockKlineWeeklyRepo(d.db)
 }

@@ -27,7 +27,7 @@ func main() {
 	}
 
 	b := broker.NewSinaBroker()
-	svc := business.NewStockService(b, d.StockKline())
+	svc := business.NewStockService(b, d.StockKlineDaily(), d.StockKlineWeekly())
 
 	r := api.NewRouter(svc)
 

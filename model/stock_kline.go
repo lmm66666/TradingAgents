@@ -13,7 +13,3 @@ type StockKline struct {
 	Close  float64 `gorm:"type:decimal(16,4)" json:"close"`
 	Volume int64   `gorm:"type:bigint" json:"volume"`
 }
-
-func (StockKline) TableName() string {
-	return "t_stock_kline"
-}

@@ -53,7 +53,7 @@ func TestSinaBrokerGetStockHistorical(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	data, err := broker.GetStockHistorical(ctx, "sh000001", 240, 30)
+	data, err := broker.GetStockHistorical(ctx, "sh000001", 1680, 30)
 	if err != nil {
 		t.Fatalf("fetch historical failed: %v", err)
 	}
@@ -62,9 +62,10 @@ func TestSinaBrokerGetStockHistorical(t *testing.T) {
 		t.Fatal("expected historical data, got none")
 	}
 
-	first := data[0]
-	t.Logf("First: Date=%s Open=%.2f High=%.2f Low=%.2f Close=%.2f Volume=%d",
-		first.Date, first.Open, first.High, first.Low, first.Close, first.Volume)
+	for _, kline := range data {
+		t.Logf("First: Date=%s Open=%.2f High=%.2f Low=%.2f Close=%.2f Volume=%d",
+			kline.Date, kline.Open, kline.High, kline.Low, kline.Close, kline.Volume)
+	}
 	t.Logf("Total data points: %d", len(data))
 }
 
