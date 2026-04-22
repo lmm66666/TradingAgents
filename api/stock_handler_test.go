@@ -29,19 +29,29 @@ func (m *mockStockService) GetStockAnalysisData(ctx context.Context, code string
 	return m.analysis, m.getErr
 }
 
-func setupTestRouter(svc business.StockService) *gin.Engine {
+// mockScheduler 模拟调度器
+type mockScheduler struct {
+	triggerErr error
+}
+
+func (m *mockScheduler) TriggerNow(ctx context.Context) error {
+	return m.triggerErr
+}
+
+func setupTestRouter(svc business.StockService, scheduler Scheduler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h := NewStockHandler(svc)
+	h := NewStockHandler(svc, scheduler)
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
 	r.GET("/api/stocks/analysis", h.GetStockAnalysisData)
+	r.POST("/api/stocks/append", h.AppendStockData)
 	return r
 }
 
 // TestSaveStockHistoricalDataSuccess 成功保存
 func TestSaveStockHistoricalDataSuccess(t *testing.T) {
 	svc := &mockStockService{}
-	r := setupTestRouter(svc)
+	r := setupTestRouter(svc, &mockScheduler{})
 
 	body, _ := json.Marshal(map[string]string{"code": "000001"})
 	w := httptest.NewRecorder()
@@ -63,7 +73,7 @@ func TestSaveStockHistoricalDataSuccess(t *testing.T) {
 // TestSaveStockHistoricalDataMissingCode 缺少 code
 func TestSaveStockHistoricalDataMissingCode(t *testing.T) {
 	svc := &mockStockService{}
-	r := setupTestRouter(svc)
+	r := setupTestRouter(svc, &mockScheduler{})
 
 	body, _ := json.Marshal(map[string]string{})
 	w := httptest.NewRecorder()
@@ -79,7 +89,7 @@ func TestSaveStockHistoricalDataMissingCode(t *testing.T) {
 // TestSaveStockHistoricalDataServiceError service 失败
 func TestSaveStockHistoricalDataServiceError(t *testing.T) {
 	svc := &mockStockService{saveErr: errors.New("service error")}
-	r := setupTestRouter(svc)
+	r := setupTestRouter(svc, &mockScheduler{})
 
 	body, _ := json.Marshal(map[string]string{"code": "000001"})
 	w := httptest.NewRecorder()
@@ -102,7 +112,7 @@ func TestGetStockAnalysisDataSuccess(t *testing.T) {
 			Weekly: []business.AnalysisItem{},
 		},
 	}
-	r := setupTestRouter(svc)
+	r := setupTestRouter(svc, &mockScheduler{})
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/stocks/analysis?code=000001", nil)
@@ -126,7 +136,7 @@ func TestGetStockAnalysisDataSuccess(t *testing.T) {
 // TestGetStockAnalysisDataMissingCode 缺少 code
 func TestGetStockAnalysisDataMissingCode(t *testing.T) {
 	svc := &mockStockService{}
-	r := setupTestRouter(svc)
+	r := setupTestRouter(svc, &mockScheduler{})
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/stocks/analysis", nil)
@@ -140,10 +150,45 @@ func TestGetStockAnalysisDataMissingCode(t *testing.T) {
 // TestGetStockAnalysisDataServiceError service 失败
 func TestGetStockAnalysisDataServiceError(t *testing.T) {
 	svc := &mockStockService{getErr: errors.New("service error")}
-	r := setupTestRouter(svc)
+	r := setupTestRouter(svc, &mockScheduler{})
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/api/stocks/analysis?code=000001", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+// TestAppendStockDataSuccess 手动触发成功
+func TestAppendStockDataSuccess(t *testing.T) {
+	svc := &mockStockService{}
+	r := setupTestRouter(svc, &mockScheduler{})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/stocks/append", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["code"].(float64) != 0 {
+		t.Fatalf("expected code 0, got %v", resp["code"])
+	}
+}
+
+// TestAppendStockDataError 手动触发失败
+func TestAppendStockDataError(t *testing.T) {
+	svc := &mockStockService{}
+	sched := &mockScheduler{triggerErr: errors.New("trigger failed")}
+	r := setupTestRouter(svc, sched)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/stocks/append", nil)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusInternalServerError {

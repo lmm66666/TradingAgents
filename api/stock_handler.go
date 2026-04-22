@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,12 +11,18 @@ import (
 
 // StockHandler 股票数据 HTTP 处理器
 type StockHandler struct {
-	svc business.StockService
+	svc       business.StockService
+	scheduler Scheduler
+}
+
+// Scheduler 调度器接口，支持手动触发扫描
+type Scheduler interface {
+	TriggerNow(ctx context.Context) error
 }
 
 // NewStockHandler 创建 StockHandler
-func NewStockHandler(svc business.StockService) *StockHandler {
-	return &StockHandler{svc: svc}
+func NewStockHandler(svc business.StockService, scheduler Scheduler) *StockHandler {
+	return &StockHandler{svc: svc, scheduler: scheduler}
 }
 
 // SaveStockHistoricalData 从 broker 获取历史数据并保存
@@ -54,6 +61,16 @@ func (h *StockHandler) GetStockAnalysisData(c *gin.Context) {
 	}
 
 	respondSuccess(c, data)
+}
+
+// AppendStockData 手动触发数据补全扫描
+func (h *StockHandler) AppendStockData(c *gin.Context) {
+	if err := h.scheduler.TriggerNow(c.Request.Context()); err != nil {
+		respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondSuccess(c, nil)
 }
 
 // saveHistoricalRequest 保存历史数据请求体

@@ -30,10 +30,10 @@ func main() {
 	b := broker.NewSinaBroker()
 	svc := business.NewStockService(b, d.StockKlineDaily(), d.StockKlineWeekly())
 
-	r := api.NewRouter(svc)
-
 	scheduler := business.NewScheduler(svc, d.StockKlineDaily(), d.StockKlineWeekly())
 	scheduler.Start(context.Background(), 16, 0)
+
+	r := api.NewRouter(svc, scheduler)
 
 	log.Println("Server starting on :8080")
 	if err := r.Run(":8080"); err != nil {
