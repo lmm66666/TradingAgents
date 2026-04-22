@@ -23,13 +23,20 @@ trading/
 │   ├── stock_service.go     # StockService 接口与实现（聚合、清洗、调用 broker/repo）
 │   └── stock_service_test.go
 ├── api/                     # HTTP API 层（gin）
+│   ├── api.md               # API 接口文档（含 curl 示例）
 │   ├── router.go            # gin 路由注册
 │   ├── stock_handler.go     # HTTP handler（统一 JSON 响应格式）
 │   └── stock_handler_test.go
-└── pkg/broker/              # 行情数据提供者
-    ├── broker.go            # IBroker 统一接口
-    ├── sina.go              # SinaBroker（新浪财经实现）
-    └── sina_test.go         # 接口测试
+├── pkg/
+│   ├── broker/              # 行情数据提供者
+│   │   ├── broker.go        # IBroker 统一接口
+│   │   ├── sina.go          # SinaBroker（新浪财经实现）
+│   │   └── sina_test.go     # 接口测试
+│   └── utils/               # 技术指标计算工具
+│       ├── indicator.go     # MACD / KDJ 计算
+│       └── indicator_test.go
+└── shell/                   # 脚本工具
+    └── save_historical.sh   # 批量保存历史数据脚本
 ```
 
 # 开发规范
