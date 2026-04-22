@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -18,6 +19,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("load config failed: %v", err)
 	}
+	fmt.Printf("%+v\n", cfg)
 
 	d, err := data.New(cfg.DB)
 	if err != nil {

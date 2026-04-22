@@ -7,8 +7,10 @@
 trading/
 ├── go.mod / go.sum          # Go 模块（go 1.25.7，依赖 gin、gorm、x/text）
 ├── main.go                  # 程序入口（初始化各层并启动 gin server）
+├── config.yaml              # 应用配置文件（DB 连接等）
+├── .gitignore               # Git 忽略规则
 ├── config/
-│   └── config.go            # 配置结构体（DB 连接等）
+│   └── config.go            # 配置结构体定义与加载
 ├── model/                   # 数据模型层
 │   ├── README.md            # Model 规范（进入该目录时必须优先读取）
 │   └── stock_kline.go       # StockKline K线数据模型（GORM），code+date 联合唯一索引

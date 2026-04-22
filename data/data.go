@@ -15,7 +15,7 @@ type Data struct {
 }
 
 // New 创建 Data 实例，内部根据配置初始化 gorm.DB 连接
-func New(cfg *config.DB) (*Data, error) {
+func New(cfg config.DB) (*Data, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName)
 

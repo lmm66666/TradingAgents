@@ -33,16 +33,18 @@ type mockRepo struct {
 	upErr   error
 }
 
-func (m *mockRepo) Create(ctx context.Context, kline *model.StockKline) error             { return nil }
-func (m *mockRepo) CreateBatch(ctx context.Context, klines []*model.StockKline) error      { return nil }
-func (m *mockRepo) Upsert(ctx context.Context, klines []*model.StockKline) error           { return m.upErr }
-func (m *mockRepo) FindByID(ctx context.Context, id uint) (*model.StockKline, error)       { return nil, nil }
+func (m *mockRepo) Create(ctx context.Context, kline *model.StockKline) error         { return nil }
+func (m *mockRepo) CreateBatch(ctx context.Context, klines []*model.StockKline) error { return nil }
+func (m *mockRepo) Upsert(ctx context.Context, klines []*model.StockKline) error      { return m.upErr }
+func (m *mockRepo) FindByID(ctx context.Context, id uint) (*model.StockKline, error)  { return nil, nil }
 func (m *mockRepo) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKline, error) {
 	return m.k, m.findErr
 }
-func (m *mockRepo) Update(ctx context.Context, kline *model.StockKline) error               { return nil }
-func (m *mockRepo) Delete(ctx context.Context, id uint) error                               { return nil }
-func (m *mockRepo) List(ctx context.Context, limit, offset int) ([]*model.StockKline, error) { return nil, nil }
+func (m *mockRepo) Update(ctx context.Context, kline *model.StockKline) error { return nil }
+func (m *mockRepo) Delete(ctx context.Context, id uint) error                 { return nil }
+func (m *mockRepo) List(ctx context.Context, limit, offset int) ([]*model.StockKline, error) {
+	return nil, nil
+}
 
 // TestStockServiceSaveHistoricalDataSuccess 成功保存历史数据
 func TestStockServiceSaveHistoricalDataSuccess(t *testing.T) {
