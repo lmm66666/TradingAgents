@@ -40,3 +40,17 @@ func TestAppendStockDataError(t *testing.T) {
 		t.Fatalf("expected 500, got %d", w.Code)
 	}
 }
+
+func TestAppendStockDataAlreadyRunning(t *testing.T) {
+	svc := &mockStockService{}
+	sched := &mockScheduler{alreadyRunning: true}
+	r := setupTestRouter(svc, sched)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/api/stocks/append", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429, got %d", w.Code)
+	}
+}

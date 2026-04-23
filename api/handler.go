@@ -21,12 +21,12 @@ func NewStockHandler(svc business.StockService, scheduler business.Scheduler) *S
 
 // response 统一 JSON 响应结构
 type response struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
 }
 
-func respondSuccess(c *gin.Context, data interface{}) {
+func respondSuccess(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, response{Code: 0, Message: "success", Data: data})
 }
 
