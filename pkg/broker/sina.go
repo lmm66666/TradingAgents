@@ -267,9 +267,14 @@ func parseKLineResponse(symbol, body string) ([]model.StockKline, error) {
 		closePrice, _ := strconv.ParseFloat(item.Close, 64)
 		volume, _ := strconv.ParseInt(item.Volume, 10, 64)
 
+		date := item.Day
+		if len(date) > 10 {
+			date = date[:10]
+		}
+
 		result = append(result, model.StockKline{
 			Code:   symbol,
-			Date:   item.Day,
+			Date:   date,
 			Open:   open,
 			High:   high,
 			Low:    low,
