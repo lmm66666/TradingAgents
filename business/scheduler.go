@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"trading/data"
+	"trading/pkg/utils"
 )
 
 // Scheduler 调度器接口
@@ -23,6 +26,9 @@ type stockScheduler struct {
 	weeklyRepo data.StockKlineWeeklyRepo
 	stopCh     chan struct{}
 	interval   time.Duration
+	running    atomic.Bool
+	bgCtx      context.Context
+	limiter    *utils.Limiter
 }
 
 // NewScheduler 创建 Scheduler 实例
@@ -33,11 +39,13 @@ func NewScheduler(svc StockService, dailyRepo data.StockKlineDailyRepo, weeklyRe
 		weeklyRepo: weeklyRepo,
 		stopCh:     make(chan struct{}),
 		interval:   10 * time.Second,
+		limiter:    utils.NewLimiter(100),
 	}
 }
 
 // Start 启动调度器，按指定时间每天执行扫描
 func (s *stockScheduler) Start(ctx context.Context, hour, minute int) {
+	s.bgCtx = ctx
 	go s.run(ctx, hour, minute)
 }
 
@@ -69,8 +77,16 @@ func (s *stockScheduler) run(ctx context.Context, hour, minute int) {
 
 // TriggerNow 手动触发一次扫描（供 API 调用）
 func (s *stockScheduler) TriggerNow(ctx context.Context) error {
+	if !s.running.CompareAndSwap(false, true) {
+		return fmt.Errorf("another task is already running")
+	}
+
 	log.Println("[scheduler] manual trigger started")
-	s.scanAndConsume(ctx)
+	go func() {
+		defer s.running.Store(false)
+		s.scanAndConsume(s.bgCtx)
+	}()
+
 	return nil
 }
 
@@ -135,15 +151,44 @@ func (s *stockScheduler) scan(ctx context.Context) ([]task, error) {
 	today := time.Now().Format("2006-01-02")
 	lastFriday := lastFridayDate(time.Now())
 
-	var tasks []task
+	type result struct {
+		task task
+		ok   bool
+	}
+
+	results := make(chan result, len(codeSet))
+	var wg sync.WaitGroup
+
 	for code := range codeSet {
-		needDaily, needWeekly, err := s.checkCode(ctx, code, today, lastFriday)
-		if err != nil {
-			log.Printf("[scheduler] check %s failed: %v", code, err)
-			continue
-		}
-		if needDaily || needWeekly {
-			tasks = append(tasks, task{code: code, needDaily: needDaily, needWeekly: needWeekly})
+		wg.Add(1)
+		go func(c string) {
+			defer wg.Done()
+			if err := s.limiter.Acquire(ctx); err != nil {
+				log.Printf("[scheduler] limiter acquire failed for %s: %v", c, err)
+				return
+			}
+			defer s.limiter.Release()
+
+			needDaily, needWeekly, err := s.checkCode(ctx, c, today, lastFriday)
+			if err != nil {
+				log.Printf("[scheduler] check %s failed: %v", c, err)
+				return
+			}
+			if needDaily || needWeekly {
+				results <- result{task: task{code: c, needDaily: needDaily, needWeekly: needWeekly}, ok: true}
+			}
+		}(code)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var tasks []task
+	for r := range results {
+		if r.ok {
+			tasks = append(tasks, r.task)
 		}
 	}
 
