@@ -3,17 +3,18 @@ package api
 import (
 	"fmt"
 
+	"trading/pkg/indicator_filter"
 	"trading/pkg/strategy"
 )
 
 func resolveStrategy(name string) (strategy.Strategy, error) {
 	switch name {
 	case strategy.StrategyVolumeSurge:
-		return strategy.NewVolumeSurge(strategy.DefaultVolumeSurgeConfig()), nil
+		return indicator_filter.NewVolumeSurge(indicator_filter.DefaultVolumeSurgeConfig()), nil
 	case strategy.StrategyKDJOverSold:
-		return strategy.NewKDJOverSold(strategy.DefaultKDJOverSoldConfig()), nil
+		return indicator_filter.NewKDJOverSold(indicator_filter.DefaultKDJFilterConfig()), nil
 	case strategy.StrategyMA60Trend:
-		return strategy.NewMA60Trend(strategy.DefaultMA60TrendConfig()), nil
+		return indicator_filter.NewMA60Trend(indicator_filter.DefaultMA60TrendConfig()), nil
 	case strategy.StrategyMACDDivergence:
 		return strategy.NewMACDDivergence(strategy.DefaultMACDDivergenceConfig()), nil
 	default:

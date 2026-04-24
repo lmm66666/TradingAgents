@@ -1,48 +1,29 @@
 package indicator
 
-// ComputeMA 计算简单移动平均（SMA）
-// periods 为周期列表，如 []int{10, 20, 60}
-// 返回每个周期对应的 MA 数组，键为周期
-func ComputeMA(closes []float64, periods []int) map[int][]float64 {
-	result := make(map[int][]float64, len(periods))
-	for _, p := range periods {
-		ma := make([]float64, len(closes))
-		for i := range closes {
-			start := 0
-			if i >= p-1 {
-				start = i - p + 1
-			}
-			sum := 0.0
-			count := 0
-			for j := start; j <= i; j++ {
-				sum += closes[j]
-				count++
-			}
-			ma[i] = Round4(sum / float64(count))
-		}
-		result[p] = ma
-	}
-	return result
+type Number interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
+		~float32 | ~float64
 }
 
-// ComputeVolumeMA 计算成交量简单移动平均
-func ComputeVolumeMA(volumes []int64, period int) []float64 {
-	if period <= 0 || len(volumes) == 0 {
+// ComputeMA 计算简单移动平均（SMA）
+func ComputeMA[T Number](values []T, period int) []float64 {
+	if period <= 0 || len(values) == 0 {
 		return nil
 	}
-	result := make([]float64, len(volumes))
-	for i := range volumes {
+	result := make([]float64, len(values))
+	for i := range values {
 		start := 0
 		if i >= period-1 {
 			start = i - period + 1
 		}
-		var sum int64
+		var sum float64
 		count := 0
 		for j := start; j <= i; j++ {
-			sum += volumes[j]
+			sum += float64(values[j])
 			count++
 		}
-		result[i] = float64(sum) / float64(count)
+		result[i] = sum / float64(count)
 	}
 	return result
 }

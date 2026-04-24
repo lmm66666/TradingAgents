@@ -89,6 +89,7 @@ trading/
 ## 代码风格
 - 函数不超过 50 行，文件不超过 800 行
 - 遵循 Go 标准编码规范
+- 接口名称以 I 打头
 
 ## Git 提交
 - 遵循 Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`

@@ -1,7 +1,6 @@
-package strategy
+package indicator_filter
 
 import (
-	"fmt"
 	"math"
 
 	"trading/model"
@@ -64,37 +63,20 @@ func NewVolumeSurge(cfg VolumeSurgeConfig) *VolumeSurge {
 	return &VolumeSurge{Config: cfg}
 }
 
-func (v *VolumeSurge) Name() string        { return StrategyVolumeSurge }
-func (v *VolumeSurge) Description() string { return "识别放量上涨后缩量回调的技术形态" }
-
-func (v *VolumeSurge) DefaultConfig() interface{} {
-	return DefaultVolumeSurgeConfig()
-}
-
-func (v *VolumeSurge) ValidateConfig(cfg interface{}) error {
-	_, ok := cfg.(VolumeSurgeConfig)
-	if !ok {
-		return fmt.Errorf("invalid config type")
-	}
-	return nil
-}
-
-// Scan 返回处于放量上涨后回调区间内、评分达标的日子
-func (v *VolumeSurge) Scan(klines []*model.StockKline) ([]Signal, error) {
+// Filter 返回处于放量上涨后回调区间内、评分达标的日子
+func (v *VolumeSurge) Filter(klines []*model.StockKline) []string {
 	cfg := v.Config
 	n := len(klines)
 	if n < cfg.VolumeMAPeriod+1 {
-		return nil, nil
+		return nil
 	}
 
 	volumes := make([]int64, n)
-	closes := make([]float64, n)
 	for i, k := range klines {
 		volumes[i] = k.Volume
-		closes[i] = k.Close
 	}
 
-	vma := indicator.ComputeVolumeMA(volumes, cfg.VolumeMAPeriod)
+	vma := indicator.ComputeMA(volumes, cfg.VolumeMAPeriod)
 	windows := findPullbackWindows(klines, volumes, vma, cfg.VolumeMAPeriod, cfg.MinVolumeRatio, cfg.MinRallyPct)
 
 	// 为每个回调窗口内的天建立索引，保留最强的窗口
@@ -113,7 +95,7 @@ func (v *VolumeSurge) Scan(klines []*model.StockKline) ([]Signal, error) {
 		}
 	}
 
-	var signals []Signal
+	var dates []string
 	for i := cfg.VolumeMAPeriod; i < n; i++ {
 		w, ok := windowByDay[i]
 		if !ok {
@@ -121,32 +103,15 @@ func (v *VolumeSurge) Scan(klines []*model.StockKline) ([]Signal, error) {
 		}
 
 		pullbackPct := (w.peakPrice - klines[i].Close) / w.peakPrice * 100
-		pullbackDays := i - w.peakIdx
-		score, subScores := v.calculateScore(klines, volumes, vma, w, i, pullbackPct)
+		score, _ := v.calculateScore(klines, volumes, vma, w, i, pullbackPct)
 		if score < cfg.MinScore {
 			continue
 		}
 
-		signals = append(signals, Signal{
-			Code:      klines[i].Code,
-			Date:      klines[i].Date,
-			Strategy:  v.Name(),
-			Type:      SignalWatch,
-			Phase:     "pullback",
-			Score:     math.Round(score*100) / 100,
-			SubScores: subScores,
-			Context: map[string]interface{}{
-				"surge_date":       klines[w.surgeIdx].Date,
-				"peak_date":        klines[w.peakIdx].Date,
-				"surge_volume":     volumes[w.surgeIdx],
-				"avg_pullback_vol": avgVolume(volumes, w.peakIdx+1, i),
-				"max_pullback_pct": math.Round(pullbackPct*100) / 100,
-				"pullback_days":    pullbackDays,
-			},
-		})
+		dates = append(dates, klines[i].Date)
 	}
 
-	return signals, nil
+	return dates
 }
 
 func (v *VolumeSurge) calculateScore(
