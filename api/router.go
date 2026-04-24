@@ -13,6 +13,6 @@ func NewRouter(svc business.StockService, scheduler business.Scheduler, analysis
 
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
 	r.POST("/api/stocks/append", h.AppendStockData)
-	r.GET("/api/stocks/analysis", h.GetStockBuySignals)
+	r.GET("/api/stocks/signal", h.GetStockBuySignals)
 	return r
 }

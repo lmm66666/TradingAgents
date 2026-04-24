@@ -66,12 +66,12 @@ curl -X POST http://localhost:8080/api/stocks/append
 从数据库查询所有股票，逐个使用 Daily B1 策略判断今日是否为买点，返回所有出现买点的股票代码列表。
 
 - **Method**: `GET`
-- **Path**: `/api/stocks/analysis`
+- **Path**: `/api/stocks/signal`
 
 #### 请求示例
 
 ```bash
-curl http://localhost:8080/api/stocks/analysis
+curl http://localhost:8080/api/stocks/signal
 ```
 
 #### 成功响应
@@ -81,7 +81,25 @@ curl http://localhost:8080/api/stocks/analysis
   "code": 0,
   "message": "success",
   "data": {
-    "codes": ["600312", "000001"]
+    "strategies": [
+      {
+        "name": "daily_b1_buy",
+        "codes": ["600312", "000001"]
+      }
+    ]
   }
 }
 ```
+
+#### 响应字段说明
+
+| 字段       | 类型              | 说明                           |
+|------------|-------------------|--------------------------------|
+| strategies | []StrategySignal  | 各策略的扫描结果               |
+
+**StrategySignal 字段**
+
+| 字段  | 类型     | 说明                   |
+|-------|----------|------------------------|
+| name  | string   | 策略名称               |
+| codes | []string | 符合该策略的股票代码   |
