@@ -3,7 +3,6 @@ package business
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"trading/data"
 	"trading/model"
@@ -41,20 +40,20 @@ func (s *analysisService) FindBuySignals(ctx context.Context) ([]StrategySignal,
 		strategy.NewDailyB1BuyStrategy(),
 	}
 
-	today := time.Now().Format("2006-01-02")
 	var results []StrategySignal
 
 	for _, st := range strategies {
 		var matched []string
 		for _, code := range codes {
 			dailies, findErr := s.dailyRepo.FindByCode(ctx, code, 70)
-			if findErr != nil {
+			if findErr != nil || len(dailies) == 0 {
 				continue
 			}
 
+			lastDate := dailies[len(dailies)-1].Date
 			klines := dailyToKlines(dailies)
-			sig := st.Scan(klines)
-			if sig != nil && sig.Date == today {
+			signals := st.ScanAll(klines)
+			if len(signals) > 0 && signals[len(signals)-1].Date == lastDate {
 				matched = append(matched, code)
 			}
 		}
