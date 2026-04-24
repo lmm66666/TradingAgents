@@ -19,4 +19,4 @@
 4. **新增策略**步骤：
    - 在 `pkg/strategy/` 下新建文件
    - 实现 `Strategy` 接口
-   - 在 `api/scan_patterns.go` 和 `api/backtest_patterns.go` 的 switch 中注册
+   - 在 `strategy.go` 的 `ResolveStrategy` 中注册

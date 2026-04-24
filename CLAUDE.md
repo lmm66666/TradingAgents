@@ -47,14 +47,17 @@ trading/
 │   │   ├── sina.go          # SinaBroker（新浪财经实现）
 │   │   └── sina_test.go     # 接口测试
 │   ├── utils/               # 技术指标计算工具
-│   │   ├── indicator.go     # MACD / KDJ 计算
-│   │   ├── indicator_test.go
-│   │   ├── volume_ma.go     # 成交量均线计算
-│   │   └── volume_ma_test.go
+│   │   ├── round.go         # Round4 四舍五入工具
+│   │   ├── ma.go            # SMA / EMA / 成交量均线
+│   │   ├── macd.go          # MACD 计算
+│   │   ├── macd_test.go
+│   │   ├── kdj.go           # KDJ 计算
+│   │   ├── kdj_test.go
+│   │   ├── volume_ma_test.go
+│   │   ├── limiter.go
+│   │   └── limiter_test.go
 │   └── strategy/            # 策略框架层
 │       ├── strategy.go              # Strategy 接口与 Signal 定义
-│       ├── scanner.go               # 多策略组合扫描器
-│       ├── scanner_test.go
 │       ├── volume_surge_pullback.go # 放量上涨缩量回调策略
 │       ├── volume_surge_pullback_test.go
 │       └── macd_divergence.go       # MACD 背离策略骨架
@@ -74,8 +77,8 @@ trading/
 
 ## Git 提交
 - 遵循 Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`
-- 必须使用英文，禁止中文 
-- 冒号后必须加空格 
+- 必须使用英文，禁止中文
+- 冒号后必须加空格
 - 句尾不加标点
 - 一个 commit 等于一件事，多件事拆分到多个 commit 中
 - 简短清晰，不超过 50 字符
