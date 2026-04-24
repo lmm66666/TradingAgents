@@ -9,29 +9,10 @@ import (
 	"trading/data"
 	"trading/model"
 	"trading/pkg/broker"
-	"trading/pkg/indicator"
 )
-
-// AnalysisItem 按时间点聚合的精简分析数据
-type AnalysisItem struct {
-	Date   string  `json:"date"`
-	Price  float64 `json:"price"`
-	Volume int64   `json:"volume"`
-	J      float64 `json:"j"`
-	DEA    float64 `json:"dea"`
-	MA5    float64 `json:"ma5"`
-	MA20   float64 `json:"ma20"`
-	MA60   float64 `json:"ma60"`
-}
-
-type StockAnalysisData struct {
-	Daily  []AnalysisItem `json:"daily"`
-	Weekly []AnalysisItem `json:"weekly"`
-}
 
 type StockService interface {
 	SaveHistoricalData(ctx context.Context, code string) error
-	GetStockAnalysisData(ctx context.Context, code string) (*StockAnalysisData, error)
 	AppendStockData(ctx context.Context, code string) error
 }
 
@@ -81,60 +62,6 @@ func (s *stockService) SaveHistoricalData(ctx context.Context, code string) erro
 	}
 
 	return nil
-}
-
-// GetStockAnalysisData 获取股票分析数据（日线/周线 + MACD/KDJ）
-func (s *stockService) GetStockAnalysisData(ctx context.Context, code string) (*StockAnalysisData, error) {
-	dailies, err := s.dailyRepo.FindByCode(ctx, code, 100)
-	if err != nil {
-		return nil, fmt.Errorf("find daily by code failed: %w", err)
-	}
-
-	weeklies, err := s.weeklyRepo.FindByCode(ctx, code, 50)
-	if err != nil {
-		return nil, fmt.Errorf("find weekly by code failed: %w", err)
-	}
-
-	dailyKlines := dailyToKlines(dailies)
-	weeklyKlines := weeklyToKlines(weeklies)
-
-	dailyMACD := indicator.ComputeMACD(dailyKlines)
-	weeklyMACD := indicator.ComputeMACD(weeklyKlines)
-	dailyKDJ := indicator.ComputeKDJ(dailyKlines)
-	weeklyKDJ := indicator.ComputeKDJ(weeklyKlines)
-
-	dailyMA := indicator.ComputeMA(extractCloses(dailyKlines), []int{5, 20, 60})
-	weeklyMA := indicator.ComputeMA(extractCloses(weeklyKlines), []int{5, 20, 60})
-
-	return &StockAnalysisData{
-		Daily:  buildAnalysisItems(dailyKlines, dailyMACD, dailyKDJ, dailyMA),
-		Weekly: buildAnalysisItems(weeklyKlines, weeklyMACD, weeklyKDJ, weeklyMA),
-	}, nil
-}
-
-func extractCloses(klines []*model.StockKline) []float64 {
-	closes := make([]float64, len(klines))
-	for i, k := range klines {
-		closes[i] = k.Close
-	}
-	return closes
-}
-
-func buildAnalysisItems(klines []*model.StockKline, macd []indicator.MACDResult, kdj []indicator.KDJResult, ma map[int][]float64) []AnalysisItem {
-	result := make([]AnalysisItem, len(klines))
-	for i, k := range klines {
-		result[i] = AnalysisItem{
-			Date:   k.Date,
-			Price:  k.Close,
-			Volume: k.Volume,
-			J:      kdj[i].J,
-			DEA:    macd[i].DEA,
-			MA5:    ma[5][i],
-			MA20:   ma[20][i],
-			MA60:   ma[60][i],
-		}
-	}
-	return result
 }
 
 // AppendStockData 增量拉取并保存缺失的股票数据
@@ -278,24 +205,6 @@ func toWeekly(klines []*model.StockKline) []*model.StockKlineWeekly {
 	for _, k := range klines {
 		w := model.StockKlineWeekly(*k)
 		result = append(result, &w)
-	}
-	return result
-}
-
-func dailyToKlines(dailies []*model.StockKlineDaily) []*model.StockKline {
-	result := make([]*model.StockKline, 0, len(dailies))
-	for _, d := range dailies {
-		k := model.StockKline(*d)
-		result = append(result, &k)
-	}
-	return result
-}
-
-func weeklyToKlines(weeklies []*model.StockKlineWeekly) []*model.StockKline {
-	result := make([]*model.StockKline, 0, len(weeklies))
-	for _, w := range weeklies {
-		k := model.StockKline(*w)
-		result = append(result, &k)
 	}
 	return result
 }

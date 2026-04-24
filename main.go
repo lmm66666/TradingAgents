@@ -12,7 +12,6 @@ import (
 	"trading/business"
 	"trading/config"
 	"trading/data"
-	"trading/pkg/backtest"
 	"trading/pkg/broker"
 )
 
@@ -34,9 +33,7 @@ func main() {
 	scheduler := business.NewScheduler(svc, d.StockKlineDaily(), d.StockKlineWeekly())
 	scheduler.Start(context.Background(), 16, 0)
 
-	backtestSvc := backtest.NewBacktestService(d.StockKlineDaily())
-
-	r := api.NewRouter(svc, scheduler, backtestSvc)
+	r := api.NewRouter(svc, scheduler)
 
 	log.Println("Server starting on :8080")
 	if err := r.Run(":8080"); err != nil {

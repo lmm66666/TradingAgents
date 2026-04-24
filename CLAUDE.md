@@ -3,12 +3,13 @@
 
 # 项目架构
 
-三层分离：
+四层分离：
 ```
-utils/        → 纯计算（MA、MACD、KDJ）
-strategy/     → 每个策略 = 1 个条件，返回符合要求的日期+评分
-business/     → BacktestService 组合多个策略取交集，回测收益
-api/          → HTTP 接口层
+pkg/indicator/  → 纯计算（MA、MACD、KDJ）
+pkg/filter/     → 技术指标过滤器，输入 K 线返回每天的日期+布尔结果
+pkg/strategy/   → 策略层，组合多个 filter 取交集，支持 Scan / ScanAll
+business/       → StockService 数据服务、Scheduler 定时任务
+api/            → HTTP 接口层
 ```
 
 # 项目结构
@@ -31,12 +32,10 @@ trading/
 │   ├── stock_kline_daily.go # 日线数据仓库接口与实现
 │   └── stock_kline_weekly.go # 周线数据仓库接口与实现
 ├── business/                # 业务逻辑层
-│   ├── stock_service.go     # StockService 接口与实现（聚合、清洗、调用 broker/repo）
+│   ├── stock_service.go     # StockService 接口与实现（数据拉取、清洗、保存）
 │   ├── stock_service_test.go
 │   ├── scheduler.go         # 定时任务调度器（每日扫描并补充缺失数据）
-│   ├── scheduler_test.go
-│   ├── backtest_service.go  # BacktestService 多策略交集扫描与回测
-│   └── backtest_service_test.go
+│   └── scheduler_test.go
 ├── api/                     # HTTP API 层（gin）
 │   ├── api.md               # API 接口文档（含 curl 示例）
 │   ├── README.md            # API 规范（一个接口一个文件）
@@ -45,18 +44,14 @@ trading/
 │   ├── handler_test.go      # 公共 mock 与测试工具
 │   ├── save_stock_historical_data.go    # POST /api/stocks/historical
 │   ├── save_stock_historical_data_test.go
-│   ├── get_stock_analysis_data.go       # GET /api/stocks/analysis
-│   ├── get_stock_analysis_data_test.go
 │   ├── append_stock_data.go             # POST /api/stocks/append
-│   ├── append_stock_data_test.go
-│   ├── scan_patterns.go                 # POST /api/patterns/scan
-│   └── backtest_patterns.go            # GET /api/patterns/backtest
+│   └── append_stock_data_test.go
 ├── pkg/
 │   ├── broker/              # 行情数据提供者
 │   │   ├── broker.go        # IBroker 统一接口
 │   │   ├── sina.go          # SinaBroker（新浪财经实现）
 │   │   └── sina_test.go     # 接口测试
-│   ├── utils/               # 技术指标计算工具（纯计算，无业务逻辑）
+│   ├── indicator/           # 技术指标计算工具（纯计算，无业务逻辑）
 │   │   ├── round.go         # Round4 四舍五入工具
 │   │   ├── ma.go            # SMA / EMA / 成交量均线
 │   │   ├── macd.go          # MACD 计算
@@ -66,16 +61,22 @@ trading/
 │   │   ├── volume_ma_test.go
 │   │   ├── limiter.go
 │   │   └── limiter_test.go
-│   └── strategy/            # 策略层（每个策略 = 一个条件）
-│       ├── strategy.go              # Strategy 接口、Signal 定义、ResolveStrategy
-│       ├── volume_surge.go          # 放量上涨+缩量回调条件
-│       ├── volume_surge_test.go
-│       ├── kdj_oversold.go          # KDJ 超卖条件（J < 阈值）
-│       ├── kdj_oversold_test.go
-│       ├── ma60_trend.go            # MA60 向上条件
-│       ├── ma60_trend_test.go
-│       ├── macd_divergence.go       # MACD 背离条件（骨架）
-│       └── README.md                # 策略开发规范
+│   ├── filter/              # 过滤器层（每个 filter = 一个条件，返回每天 bool）
+│   │   ├── filter.go        # IFilter 接口、Result 定义
+│   │   ├── filter_test.go
+│   │   ├── kdj.go           # KDJ 超买/超卖过滤器
+│   │   ├── kdj_test.go
+│   │   ├── ma.go            # MA 趋势过滤器
+│   │   ├── ma_test.go
+│   │   ├── volume_surge.go  # 放量上涨后回调过滤器
+│   │   ├── volume_surge_test.go
+│   │   ├── date.go          # 持有天数过滤器
+│   │   └── date_test.go
+│   └── strategy/            # 策略层（组合多个 filter）
+│       ├── strategy.go      # Strategy 结构体、Signal、Scan / ScanAll
+│       ├── strategy_test.go
+│       ├── buy.go           # 预定义买入策略（如 B1）
+│       └── sell.go          # 预定义卖出策略
 └── shell/                   # 脚本工具
     └── save_historical.sh   # 批量保存历史数据脚本
 ```
