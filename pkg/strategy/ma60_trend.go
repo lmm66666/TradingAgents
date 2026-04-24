@@ -2,8 +2,21 @@ package strategy
 
 import (
 	"trading/model"
-	"trading/pkg/utils"
+	"trading/pkg/indicator"
 )
+
+// MA60TrendConfig MA60 趋势策略配置
+type MA60TrendConfig struct{}
+
+// DefaultMA60TrendConfig 返回默认配置
+func DefaultMA60TrendConfig() MA60TrendConfig {
+	return MA60TrendConfig{}
+}
+
+// NewMA60Trend 创建策略实例
+func NewMA60Trend(cfg MA60TrendConfig) *MA60Trend {
+	return &MA60Trend{}
+}
 
 // MA60Trend MA60 趋势策略：均线向上的天
 type MA60Trend struct{}
@@ -22,7 +35,7 @@ func (m *MA60Trend) Scan(klines []*model.StockKline) ([]Signal, error) {
 		closes[i] = k.Close
 	}
 
-	ma60 := utils.ComputeMA(closes, []int{60})[60]
+	ma60 := indicator.ComputeMA(closes, []int{60})[60]
 
 	var signals []Signal
 	for i := 1; i < len(klines); i++ {
@@ -38,7 +51,7 @@ func (m *MA60Trend) Scan(klines []*model.StockKline) ([]Signal, error) {
 			Phase:    "trend_up",
 			Score:    100,
 			SubScores: map[string]float64{
-				"ma60": utils.Round4(ma60[i]),
+				"ma60": indicator.Round4(ma60[i]),
 			},
 		})
 	}

@@ -31,7 +31,7 @@ func (h *StockHandler) BacktestPatterns(c *gin.Context) {
 		if name == "" {
 			continue
 		}
-		st, err := strategy.ResolveStrategy(name)
+		st, err := resolveStrategy(name)
 		if err != nil {
 			respondError(c, http.StatusBadRequest, err.Error())
 			return

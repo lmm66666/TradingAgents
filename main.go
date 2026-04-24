@@ -12,6 +12,7 @@ import (
 	"trading/business"
 	"trading/config"
 	"trading/data"
+	"trading/pkg/backtest"
 	"trading/pkg/broker"
 )
 
@@ -33,7 +34,7 @@ func main() {
 	scheduler := business.NewScheduler(svc, d.StockKlineDaily(), d.StockKlineWeekly())
 	scheduler.Start(context.Background(), 16, 0)
 
-	backtestSvc := business.NewBacktestService(d.StockKlineDaily())
+	backtestSvc := backtest.NewBacktestService(d.StockKlineDaily())
 
 	r := api.NewRouter(svc, scheduler, backtestSvc)
 

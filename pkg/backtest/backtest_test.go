@@ -1,4 +1,4 @@
-package business
+package backtest
 
 import (
 	"context"
@@ -92,7 +92,7 @@ func testStrategies() []strategy.Strategy {
 	return []strategy.Strategy{
 		strategy.NewVolumeSurge(vsCfg),
 		strategy.NewKDJOverSold(strategy.DefaultKDJOverSoldConfig()),
-		&strategy.MA60Trend{},
+		strategy.NewMA60Trend(strategy.DefaultMA60TrendConfig()),
 	}
 }
 

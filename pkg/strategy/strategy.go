@@ -1,10 +1,6 @@
 package strategy
 
-import (
-	"fmt"
-
-	"trading/model"
-)
+import "trading/model"
 
 // SignalType 信号类型
 type SignalType string
@@ -47,19 +43,3 @@ const (
 	StrategyMA60Trend      = "ma60_trend"
 	StrategyMACDDivergence = "macd_divergence"
 )
-
-// ResolveStrategy 根据策略名称创建策略实例
-func ResolveStrategy(name string) (Strategy, error) {
-	switch name {
-	case StrategyVolumeSurge:
-		return NewVolumeSurge(DefaultVolumeSurgeConfig()), nil
-	case StrategyKDJOverSold:
-		return NewKDJOverSold(DefaultKDJOverSoldConfig()), nil
-	case StrategyMA60Trend:
-		return &MA60Trend{}, nil
-	case StrategyMACDDivergence:
-		return &MACDDivergence{}, nil
-	default:
-		return nil, fmt.Errorf("unknown strategy: %s", name)
-	}
-}

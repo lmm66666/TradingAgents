@@ -1,4 +1,4 @@
-package business
+package backtest
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 
 	"trading/data"
 	"trading/model"
+	"trading/pkg/indicator"
 	"trading/pkg/strategy"
-	"trading/pkg/utils"
 )
 
 // TradeRecord 单次交易记录
@@ -108,7 +108,7 @@ func (s *backtestService) Run(ctx context.Context, code string, strs []strategy.
 		report.Trades = append(report.Trades, TradeRecord{
 			EntryDate: sig.Date,
 			ExitDate:  klines[entryIdx+holdDays].Date,
-			ReturnPct: utils.Round4(ret * 100),
+			ReturnPct: indicator.Round4(ret * 100),
 		})
 	}
 
@@ -217,4 +217,13 @@ func findDateIndex(klines []*model.StockKline, date string) int {
 		}
 	}
 	return -1
+}
+
+func dailyToKlines(dailies []*model.StockKlineDaily) []*model.StockKline {
+	result := make([]*model.StockKline, 0, len(dailies))
+	for _, d := range dailies {
+		k := model.StockKline(*d)
+		result = append(result, &k)
+	}
+	return result
 }

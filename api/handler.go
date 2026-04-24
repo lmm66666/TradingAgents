@@ -6,17 +6,18 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"trading/business"
+	"trading/pkg/backtest"
 )
 
 // StockHandler 股票数据 HTTP 处理器
 type StockHandler struct {
 	svc         business.StockService
 	scheduler   business.Scheduler
-	backtestSvc business.BacktestService
+	backtestSvc backtest.BacktestService
 }
 
 // NewStockHandler 创建 StockHandler
-func NewStockHandler(svc business.StockService, scheduler business.Scheduler, backtestSvc business.BacktestService) *StockHandler {
+func NewStockHandler(svc business.StockService, scheduler business.Scheduler, backtestSvc backtest.BacktestService) *StockHandler {
 	return &StockHandler{svc: svc, scheduler: scheduler, backtestSvc: backtestSvc}
 }
 

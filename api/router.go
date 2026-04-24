@@ -4,10 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"trading/business"
+	"trading/pkg/backtest"
 )
 
 // NewRouter 创建 gin 路由
-func NewRouter(svc business.StockService, scheduler business.Scheduler, backtestSvc business.BacktestService) *gin.Engine {
+func NewRouter(svc business.StockService, scheduler business.Scheduler, backtestSvc backtest.BacktestService) *gin.Engine {
 	r := gin.Default()
 	h := NewStockHandler(svc, scheduler, backtestSvc)
 

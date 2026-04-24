@@ -24,7 +24,7 @@ func (h *StockHandler) ScanPatterns(c *gin.Context) {
 
 	strs := make([]strategy.Strategy, 0, len(req.Strategies))
 	for _, name := range req.Strategies {
-		st, err := strategy.ResolveStrategy(name)
+		st, err := resolveStrategy(name)
 		if err != nil {
 			respondError(c, http.StatusBadRequest, err.Error())
 			return
