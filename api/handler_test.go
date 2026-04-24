@@ -46,7 +46,7 @@ func (m *mockScheduler) TriggerNow(ctx context.Context) error {
 func setupTestRouter(svc business.StockService, scheduler business.Scheduler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h := NewStockHandler(svc, scheduler)
+	h := NewStockHandler(svc, scheduler, nil)
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
 	r.GET("/api/stocks/analysis", h.GetStockAnalysisData)
 	r.POST("/api/stocks/append", h.AppendStockData)
