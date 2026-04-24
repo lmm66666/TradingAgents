@@ -24,12 +24,9 @@ func (h *StockHandler) BacktestPatterns(c *gin.Context) {
 		holdDays = 5
 	}
 
-	var st strategy.Strategy
-	switch strategyName {
-	case "volume_surge_pullback":
-		st = strategy.NewVolumeSurgePullback(strategy.DefaultVolumeSurgePullbackConfig())
-	default:
-		respondError(c, http.StatusBadRequest, "unknown strategy")
+	st, err := strategy.ResolveStrategy(strategyName)
+	if err != nil {
+		respondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 

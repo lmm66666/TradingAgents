@@ -1,6 +1,10 @@
 package strategy
 
-import "trading/model"
+import (
+	"fmt"
+
+	"trading/model"
+)
 
 // SignalType 信号类型
 type SignalType string
@@ -35,4 +39,16 @@ type Configurable interface {
 	Strategy
 	DefaultConfig() interface{}
 	ValidateConfig(cfg interface{}) error
+}
+
+// ResolveStrategy 根据策略名称创建策略实例
+func ResolveStrategy(name string) (Strategy, error) {
+	switch name {
+	case "volume_surge_pullback":
+		return NewVolumeSurgePullback(DefaultVolumeSurgePullbackConfig()), nil
+	case "macd_divergence":
+		return &MACDDivergence{}, nil
+	default:
+		return nil, fmt.Errorf("unknown strategy: %s", name)
+	}
 }

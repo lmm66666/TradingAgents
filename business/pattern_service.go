@@ -3,6 +3,7 @@ package business
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"trading/data"
 	"trading/model"
@@ -49,7 +50,7 @@ func (p *patternService) Scan(ctx context.Context, code string, st strategy.Stra
 	if err != nil {
 		return nil, fmt.Errorf("find daily failed: %w", err)
 	}
-	klines := dailyToKlinesForPattern(dailies)
+	klines := dailyToKlines(dailies)
 	return st.Scan(klines)
 }
 
@@ -63,6 +64,7 @@ func (p *patternService) ScanAll(ctx context.Context, st strategy.Strategy, minS
 	for _, code := range codes {
 		signals, err := p.Scan(ctx, code, st)
 		if err != nil {
+			log.Printf("[pattern] scan %s failed: %v", code, err)
 			continue
 		}
 		for _, s := range signals {
@@ -79,7 +81,7 @@ func (p *patternService) Backtest(ctx context.Context, code string, st strategy.
 	if err != nil {
 		return nil, fmt.Errorf("find daily failed: %w", err)
 	}
-	klines := dailyToKlinesForPattern(dailies)
+	klines := dailyToKlines(dailies)
 	signals, err := st.Scan(klines)
 	if err != nil {
 		return nil, err
@@ -139,15 +141,6 @@ func (p *patternService) Backtest(ctx context.Context, code string, st strategy.
 	}
 
 	return report, nil
-}
-
-func dailyToKlinesForPattern(dailies []*model.StockKlineDaily) []*model.StockKline {
-	result := make([]*model.StockKline, len(dailies))
-	for i, d := range dailies {
-		k := model.StockKline(*d)
-		result[i] = &k
-	}
-	return result
 }
 
 func findDateIndex(klines []*model.StockKline, date string) int {
