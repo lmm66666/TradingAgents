@@ -58,3 +58,30 @@ curl -X POST http://localhost:8080/api/stocks/historical \
 ```bash
 curl -X POST http://localhost:8080/api/stocks/append
 ```
+
+---
+
+### 3. 股票买点扫描
+
+从数据库查询所有股票，逐个使用 Daily B1 策略判断今日是否为买点，返回所有出现买点的股票代码列表。
+
+- **Method**: `GET`
+- **Path**: `/api/stocks/analysis`
+
+#### 请求示例
+
+```bash
+curl http://localhost:8080/api/stocks/analysis
+```
+
+#### 成功响应
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "codes": ["600312", "000001"]
+  }
+}
+```

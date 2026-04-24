@@ -34,6 +34,7 @@ trading/
 ├── business/                # 业务逻辑层
 │   ├── stock_service.go     # StockService 接口与实现（数据拉取、清洗、保存）
 │   ├── stock_service_test.go
+│   ├── analysis_service.go  # AnalysisService 接口与实现（买点扫描）
 │   ├── scheduler.go         # 定时任务调度器（每日扫描并补充缺失数据）
 │   └── scheduler_test.go
 ├── api/                     # HTTP API 层（gin）
@@ -45,7 +46,8 @@ trading/
 │   ├── save_stock_historical_data.go    # POST /api/stocks/historical
 │   ├── save_stock_historical_data_test.go
 │   ├── append_stock_data.go             # POST /api/stocks/append
-│   └── append_stock_data_test.go
+│   ├── append_stock_data_test.go
+│   └── get_stock_buy_signals.go         # GET /api/stocks/analysis
 ├── pkg/
 │   ├── broker/              # 行情数据提供者
 │   │   ├── broker.go        # IBroker 统一接口

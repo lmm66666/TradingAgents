@@ -188,63 +188,6 @@ func TestStockServiceSaveHistoricalDataWeeklyRepoError(t *testing.T) {
 	}
 }
 
-// TestStockServiceGetStockAnalysisDataSuccess 成功获取分析数据
-func TestStockServiceGetStockAnalysisDataSuccess(t *testing.T) {
-	dailyRepo := &mockDailyRepo{
-		k: []*model.StockKlineDaily{
-			{Code: "000001", Date: "2025-04-20", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
-			{Code: "000001", Date: "2025-04-21", Open: 1.5, High: 3, Low: 1, Close: 2, Volume: 200},
-		},
-	}
-	weeklyRepo := &mockWeeklyRepo{
-		k: []*model.StockKlineWeekly{
-			{Code: "000001", Date: "2025-04-18", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
-		},
-	}
-	svc := NewStockService(&mockBroker{}, dailyRepo, weeklyRepo)
-
-	result, err := svc.GetStockAnalysisData(context.Background(), "000001")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(result.Daily) != 2 {
-		t.Fatalf("expected 2 daily items, got %d", len(result.Daily))
-	}
-	if len(result.Weekly) != 1 {
-		t.Fatalf("expected 1 weekly item, got %d", len(result.Weekly))
-	}
-	if len(result.Daily) == 0 || len(result.Weekly) == 0 {
-		t.Fatal("expected non-empty daily and weekly analysis items")
-	}
-}
-
-// TestStockServiceGetStockAnalysisDataDailyError 日线查询失败
-func TestStockServiceGetStockAnalysisDataDailyError(t *testing.T) {
-	dailyRepo := &mockDailyRepo{findErr: errors.New("db down")}
-	svc := NewStockService(&mockBroker{}, dailyRepo, &mockWeeklyRepo{})
-
-	_, err := svc.GetStockAnalysisData(context.Background(), "000001")
-	if err == nil {
-		t.Fatal("expected error when daily repo fails")
-	}
-}
-
-// TestStockServiceGetStockAnalysisDataWeeklyError 周线查询失败
-func TestStockServiceGetStockAnalysisDataWeeklyError(t *testing.T) {
-	dailyRepo := &mockDailyRepo{
-		k: []*model.StockKlineDaily{
-			{Code: "000001", Date: "2025-04-20", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100},
-		},
-	}
-	weeklyRepo := &mockWeeklyRepo{findErr: errors.New("db down")}
-	svc := NewStockService(&mockBroker{}, dailyRepo, weeklyRepo)
-
-	_, err := svc.GetStockAnalysisData(context.Background(), "000001")
-	if err == nil {
-		t.Fatal("expected error when weekly repo fails")
-	}
-}
-
 // TestAppendStockDataSuccess 增量保存成功，只保存新数据
 func TestAppendStockDataSuccess(t *testing.T) {
 	broker := &mockBroker{

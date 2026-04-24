@@ -89,9 +89,6 @@ type mockSvcForScheduler struct {
 func (m *mockSvcForScheduler) SaveHistoricalData(ctx context.Context, code string) error {
 	return m.saveErr
 }
-func (m *mockSvcForScheduler) GetStockAnalysisData(ctx context.Context, code string) (*StockAnalysisData, error) {
-	return nil, nil
-}
 func (m *mockSvcForScheduler) AppendStockData(ctx context.Context, code string) error {
 	return m.saveErr
 }
