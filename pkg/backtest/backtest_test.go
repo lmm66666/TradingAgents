@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"trading/model"
-	"trading/pkg/indicator_filter"
+	"trading/pkg/score"
 	"trading/pkg/strategy"
 )
 
@@ -87,13 +87,13 @@ func buildDailyKlines() []*model.StockKlineDaily {
 }
 
 func testStrategies() []strategy.Strategy {
-	vsCfg := indicator_filter.DefaultVolumeSurgeConfig()
+	vsCfg := score.DefaultVolumeSurgeConfig()
 	vsCfg.MaxPullbackPct = 20.0
 	vsCfg.MaxPullbackDays = 15
 	return []strategy.Strategy{
-		indicator_filter.NewVolumeSurge(vsCfg),
-		indicator_filter.NewKDJOverSold(indicator_filter.DefaultKDJFilterConfig()),
-		indicator_filter.NewMA60Trend(indicator_filter.DefaultMA60TrendConfig()),
+		score.NewVolumeSurge(vsCfg),
+		score.NewKDJOverSold(score.DefaultKDJFilterConfig()),
+		score.NewMA60Trend(score.DefaultMA60TrendConfig()),
 	}
 }
 
@@ -117,7 +117,7 @@ func TestBacktestServiceScanSingleStrategy(t *testing.T) {
 	svc := NewBacktestService(repo)
 
 	// 单策略：只要 KDJ 超卖
-	kdj := indicator_filter.NewKDJOverSold(indicator_filter.DefaultKDJFilterConfig())
+	kdj := score.NewKDJOverSold(score.DefaultKDJFilterConfig())
 	signals, err := svc.Scan(context.Background(), "600312", []strategy.Strategy{kdj}, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

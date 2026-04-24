@@ -1,4 +1,4 @@
-package indicator_filter
+package score
 
 import (
 	"math"
@@ -53,18 +53,18 @@ type pullbackWindow struct {
 	peakPrice float64
 }
 
-// VolumeSurge 放量上涨缩量回调策略
-type VolumeSurge struct {
+// VolumeSurgeScorer 放量上涨缩量回调评分器
+type VolumeSurgeScorer struct {
 	Config VolumeSurgeConfig
 }
 
-// NewVolumeSurge 创建策略实例
-func NewVolumeSurge(cfg VolumeSurgeConfig) *VolumeSurge {
-	return &VolumeSurge{Config: cfg}
+// NewVolumeSurgeScorer 创建评分器实例
+func NewVolumeSurgeScorer(cfg VolumeSurgeConfig) *VolumeSurgeScorer {
+	return &VolumeSurgeScorer{Config: cfg}
 }
 
-// Filter 返回处于放量上涨后回调区间内、评分达标的日子
-func (v *VolumeSurge) Filter(klines []*model.StockKline) []string {
+// Score 返回处于放量上涨后回调区间内、评分达标的日期与分数
+func (v *VolumeSurgeScorer) Score(klines []*model.StockKline) []*Result {
 	cfg := v.Config
 	n := len(klines)
 	if n < cfg.VolumeMAPeriod+1 {
@@ -95,7 +95,7 @@ func (v *VolumeSurge) Filter(klines []*model.StockKline) []string {
 		}
 	}
 
-	var dates []string
+	var results []*Result
 	for i := cfg.VolumeMAPeriod; i < n; i++ {
 		w, ok := windowByDay[i]
 		if !ok {
@@ -108,13 +108,20 @@ func (v *VolumeSurge) Filter(klines []*model.StockKline) []string {
 			continue
 		}
 
-		dates = append(dates, klines[i].Date)
+		s := int(score)
+		if s > 100 {
+			s = 100
+		}
+		results = append(results, &Result{
+			Date:  klines[i].Date,
+			Score: s,
+		})
 	}
 
-	return dates
+	return results
 }
 
-func (v *VolumeSurge) calculateScore(
+func (v *VolumeSurgeScorer) calculateScore(
 	klines []*model.StockKline,
 	volumes []int64,
 	vma []float64,

@@ -1,4 +1,4 @@
-package indicator_filter
+package score
 
 import (
 	"trading/model"
@@ -6,30 +6,30 @@ import (
 )
 
 const (
-	trendUpFilter   = "TrendUp"
-	trendDownFilter = "TrendDown"
+	trendUpScorer   = "TrendUp"
+	trendDownScorer = "TrendDown"
 )
 
-type MAFilter struct {
+type MAScorer struct {
 	Type   string
 	Period int
 }
 
-func NewTrendUpMAFilter(period int) *MAFilter {
-	return &MAFilter{
-		Type:   trendUpFilter,
+func NewTrendUpMAScorer(period int) *MAScorer {
+	return &MAScorer{
+		Type:   trendUpScorer,
 		Period: period,
 	}
 }
 
-func NewTrendDownMAFilter(period int) *MAFilter {
-	return &MAFilter{
-		Type:   trendDownFilter,
+func NewTrendDownMAScorer(period int) *MAScorer {
+	return &MAScorer{
+		Type:   trendDownScorer,
 		Period: period,
 	}
 }
 
-func (f *MAFilter) Filter(klines []*model.StockKline) []string {
+func (f *MAScorer) Score(klines []*model.StockKline) []*Result {
 	if len(klines) == 0 {
 		return nil
 	}
@@ -41,7 +41,7 @@ func (f *MAFilter) Filter(klines []*model.StockKline) []string {
 
 	maResults := indicator.ComputeMA(prices, f.Period)
 
-	var dates []string
+	var results []*Result
 	for i := range maResults {
 		if i == 0 {
 			continue
@@ -49,16 +49,19 @@ func (f *MAFilter) Filter(klines []*model.StockKline) []string {
 
 		match := false
 		switch f.Type {
-		case trendUpFilter:
+		case trendUpScorer:
 			match = maResults[i] > maResults[i-1]
-		case trendDownFilter:
+		case trendDownScorer:
 			match = maResults[i] < maResults[i-1]
 		}
 
 		if match {
-			dates = append(dates, klines[i].Date)
+			results = append(results, &Result{
+				Date:  klines[i].Date,
+				Score: 100,
+			})
 		}
 	}
 
-	return dates
+	return results
 }
