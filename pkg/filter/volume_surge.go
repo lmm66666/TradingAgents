@@ -18,8 +18,8 @@ func DefaultVolumeSurgeConfig() VolumeSurgeConfig {
 		VolumeMAPeriod:  20,
 		MinVolumeRatio:  1.2,
 		MinRallyPct:     2.0,
-		MaxPullbackPct:  15.0,
-		MaxPullbackDays: 8,
+		MaxPullbackPct:  20.0,
+		MaxPullbackDays: 10,
 	}
 }
 
