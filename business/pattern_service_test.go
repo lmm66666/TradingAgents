@@ -45,52 +45,60 @@ func (m *mockDailyRepoForPattern) List(ctx context.Context, limit, offset int) (
 }
 
 func buildDailyKlines() []*model.StockKlineDaily {
-	klines := make([]*model.StockKlineDaily, 25)
-	for i := 0; i < 25; i++ {
-		vol := int64(100000)
-		close := 10.0
-		open := 9.9
-		high := 10.1
-		low := 9.8
-
-		switch i {
-		case 20:
-			vol = 300000
-			open = 10.2
-			close = 10.5
-			high = 10.6
-			low = 10.1
-		case 21:
-			vol = 250000
-			open = 10.5
-			close = 10.8
-			high = 10.9
-			low = 10.4
-		case 22, 23, 24:
-			vol = 80000
-			open = close
-			close = 10.8 - float64(i-21)*0.15
-			high = open + 0.1
-			low = close - 0.1
-		}
-
+	klines := make([]*model.StockKlineDaily, 70)
+	for i := 0; i < 70; i++ {
+		price := 10.0 + float64(i)*0.01
 		klines[i] = &model.StockKlineDaily{
 			Code:   "600312",
-			Date:   fmt.Sprintf("2026-03-%02d", i+1),
-			Open:   open,
-			High:   high,
-			Low:    low,
-			Close:  close,
-			Volume: vol,
+			Date:   fmt.Sprintf("2026-%02d-%02d", (i/30)+1, (i%30)+1),
+			Open:   price - 0.05,
+			High:   price + 0.1,
+			Low:    price - 0.1,
+			Close:  price,
+			Volume: 100000,
+		}
+	}
+	// 放量上涨
+	klines[30] = &model.StockKlineDaily{
+		Code: "600312", Date: "2026-02-01",
+		Open: 10.3, High: 10.7, Low: 10.2, Close: 10.6, Volume: 350000,
+	}
+	klines[31] = &model.StockKlineDaily{
+		Code: "600312", Date: "2026-02-02",
+		Open: 10.6, High: 11.0, Low: 10.5, Close: 10.9, Volume: 280000,
+	}
+	// 急跌压低 KDJ
+	for i := 32; i <= 46; i++ {
+		prevClose := klines[i-1].Close
+		close := prevClose - 0.12
+		klines[i] = &model.StockKlineDaily{
+			Code: "600312", Date: fmt.Sprintf("2026-02-%02d", i-29),
+			Open: prevClose, High: prevClose + 0.02, Low: close - 0.02, Close: close, Volume: 60000,
+		}
+	}
+	// 缓慢回升保持 MA60 向上
+	for i := 47; i < 70; i++ {
+		prevClose := klines[i-1].Close
+		close := prevClose + 0.03
+		klines[i] = &model.StockKlineDaily{
+			Code: "600312", Date: fmt.Sprintf("2026-03-%02d", i-46),
+			Open: prevClose, High: close + 0.05, Low: prevClose - 0.05, Close: close, Volume: 100000,
 		}
 	}
 	return klines
 }
 
+func testConfig() strategy.VolumeSurgePullbackConfig {
+	cfg := strategy.DefaultVolumeSurgePullbackConfig()
+	cfg.MaxPullbackPct = 20.0
+	cfg.MaxPullbackDays = 15
+	return cfg
+}
+
 func TestPatternServiceScan(t *testing.T) {
 	repo := &mockDailyRepoForPattern{klines: buildDailyKlines()}
 	svc := NewPatternService(repo)
-	st := strategy.NewVolumeSurgePullback(strategy.DefaultVolumeSurgePullbackConfig())
+	st := strategy.NewVolumeSurgePullback(testConfig())
 
 	signals, err := svc.Scan(context.Background(), "600312", st)
 	if err != nil {
@@ -104,7 +112,7 @@ func TestPatternServiceScan(t *testing.T) {
 func TestPatternServiceScanAll(t *testing.T) {
 	repo := &mockDailyRepoForPattern{klines: buildDailyKlines()}
 	svc := NewPatternService(repo)
-	st := strategy.NewVolumeSurgePullback(strategy.DefaultVolumeSurgePullbackConfig())
+	st := strategy.NewVolumeSurgePullback(testConfig())
 
 	signals, err := svc.ScanAll(context.Background(), st, 70)
 	if err != nil {
@@ -118,7 +126,7 @@ func TestPatternServiceScanAll(t *testing.T) {
 func TestPatternServiceBacktest(t *testing.T) {
 	repo := &mockDailyRepoForPattern{klines: buildDailyKlines()}
 	svc := NewPatternService(repo)
-	st := strategy.NewVolumeSurgePullback(strategy.DefaultVolumeSurgePullbackConfig())
+	st := strategy.NewVolumeSurgePullback(testConfig())
 
 	report, err := svc.Backtest(context.Background(), "600312", st, 2)
 	if err != nil {
