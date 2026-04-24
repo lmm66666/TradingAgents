@@ -101,7 +101,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add pkg/utils/volume_ma.go pkg/utils/volume_ma_test.go
+git add pkg/indicator/volume_ma.go pkg/indicator/volume_ma_test.go
 git commit -m "feat: add volume moving average utility"
 ```
 

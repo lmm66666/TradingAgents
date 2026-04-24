@@ -9,7 +9,7 @@ import (
 	"trading/data"
 	"trading/model"
 	"trading/pkg/broker"
-	"trading/pkg/utils"
+	"trading/pkg/indicator"
 )
 
 // AnalysisItem 按时间点聚合的精简分析数据
@@ -98,13 +98,13 @@ func (s *stockService) GetStockAnalysisData(ctx context.Context, code string) (*
 	dailyKlines := dailyToKlines(dailies)
 	weeklyKlines := weeklyToKlines(weeklies)
 
-	dailyMACD := utils.ComputeMACD(dailyKlines)
-	weeklyMACD := utils.ComputeMACD(weeklyKlines)
-	dailyKDJ := utils.ComputeKDJ(dailyKlines)
-	weeklyKDJ := utils.ComputeKDJ(weeklyKlines)
+	dailyMACD := indicator.ComputeMACD(dailyKlines)
+	weeklyMACD := indicator.ComputeMACD(weeklyKlines)
+	dailyKDJ := indicator.ComputeKDJ(dailyKlines)
+	weeklyKDJ := indicator.ComputeKDJ(weeklyKlines)
 
-	dailyMA := utils.ComputeMA(extractCloses(dailyKlines), []int{5, 20, 60})
-	weeklyMA := utils.ComputeMA(extractCloses(weeklyKlines), []int{5, 20, 60})
+	dailyMA := indicator.ComputeMA(extractCloses(dailyKlines), []int{5, 20, 60})
+	weeklyMA := indicator.ComputeMA(extractCloses(weeklyKlines), []int{5, 20, 60})
 
 	return &StockAnalysisData{
 		Daily:  buildAnalysisItems(dailyKlines, dailyMACD, dailyKDJ, dailyMA),
@@ -120,7 +120,7 @@ func extractCloses(klines []*model.StockKline) []float64 {
 	return closes
 }
 
-func buildAnalysisItems(klines []*model.StockKline, macd []utils.MACDResult, kdj []utils.KDJResult, ma map[int][]float64) []AnalysisItem {
+func buildAnalysisItems(klines []*model.StockKline, macd []indicator.MACDResult, kdj []indicator.KDJResult, ma map[int][]float64) []AnalysisItem {
 	result := make([]AnalysisItem, len(klines))
 	for i, k := range klines {
 		result[i] = AnalysisItem{

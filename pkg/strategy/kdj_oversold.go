@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"trading/model"
-	"trading/pkg/utils"
+	"trading/pkg/indicator"
 )
 
 // KDJOverSoldConfig KDJ 超卖策略配置
@@ -36,7 +36,7 @@ func (k *KDJOverSold) Scan(klines []*model.StockKline) ([]Signal, error) {
 		return nil, nil
 	}
 
-	kdjResults := utils.ComputeKDJ(klines)
+	kdjResults := indicator.ComputeKDJ(klines)
 	threshold := k.Config.Threshold
 
 	var signals []Signal

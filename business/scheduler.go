@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"trading/data"
-	"trading/pkg/utils"
+	"trading/pkg/indicator"
 )
 
 // Scheduler 调度器接口
@@ -28,7 +28,7 @@ type stockScheduler struct {
 	interval   time.Duration
 	running    atomic.Bool
 	bgCtx      context.Context
-	limiter    *utils.Limiter
+	limiter    *indicator.Limiter
 }
 
 // NewScheduler 创建 Scheduler 实例
@@ -39,7 +39,7 @@ func NewScheduler(svc StockService, dailyRepo data.StockKlineDailyRepo, weeklyRe
 		weeklyRepo: weeklyRepo,
 		stopCh:     make(chan struct{}),
 		interval:   10 * time.Second,
-		limiter:    utils.NewLimiter(100),
+		limiter:    indicator.NewLimiter(100),
 	}
 }
 

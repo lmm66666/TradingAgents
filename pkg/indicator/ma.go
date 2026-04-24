@@ -1,4 +1,4 @@
-package utils
+package indicator
 
 // ComputeMA 计算简单移动平均（SMA）
 // periods 为周期列表，如 []int{10, 20, 60}

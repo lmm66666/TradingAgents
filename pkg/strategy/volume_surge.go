@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"trading/model"
-	"trading/pkg/utils"
+	"trading/pkg/indicator"
 )
 
 // VolumeSurgeConfig 放量上涨+回调策略配置
@@ -94,7 +94,7 @@ func (v *VolumeSurge) Scan(klines []*model.StockKline) ([]Signal, error) {
 		closes[i] = k.Close
 	}
 
-	vma := utils.ComputeVolumeMA(volumes, cfg.VolumeMAPeriod)
+	vma := indicator.ComputeVolumeMA(volumes, cfg.VolumeMAPeriod)
 	windows := findPullbackWindows(klines, volumes, vma, cfg.VolumeMAPeriod, cfg.MinVolumeRatio, cfg.MinRallyPct)
 
 	// 为每个回调窗口内的天建立索引，保留最强的窗口
