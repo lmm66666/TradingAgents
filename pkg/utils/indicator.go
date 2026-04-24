@@ -53,9 +53,9 @@ func ComputeMACD(klines []*model.StockKline) []MACDResult {
 	for i := range results {
 		results[i] = MACDResult{
 			Date: klines[i].Date,
-			DIF:  round4(dif[i]),
-			DEA:  round4(dea[i]),
-			BAR:  round4(2 * (dif[i] - dea[i])),
+			DIF:  Round4(dif[i]),
+			DEA:  Round4(dea[i]),
+			BAR:  Round4(2 * (dif[i] - dea[i])),
 		}
 	}
 	return results
@@ -144,9 +144,9 @@ func ComputeKDJ(klines []*model.StockKline) []KDJResult {
 
 		results[i] = KDJResult{
 			Date: klines[i].Date,
-			K:    round4(kVal),
-			D:    round4(dVal),
-			J:    round4(jVal),
+			K:    Round4(kVal),
+			D:    Round4(dVal),
+			J:    Round4(jVal),
 		}
 	}
 	return results
@@ -170,13 +170,14 @@ func ComputeMA(closes []float64, periods []int) map[int][]float64 {
 				sum += closes[j]
 				count++
 			}
-			ma[i] = round4(sum / float64(count))
+			ma[i] = Round4(sum / float64(count))
 		}
 		result[p] = ma
 	}
 	return result
 }
 
-func round4(v float64) float64 {
+// Round4 四舍五入到 4 位小数
+func Round4(v float64) float64 {
 	return math.Round(v*10000) / 10000
 }

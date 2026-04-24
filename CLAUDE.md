@@ -24,7 +24,9 @@ trading/
 │   ├── stock_service.go     # StockService 接口与实现（聚合、清洗、调用 broker/repo）
 │   ├── stock_service_test.go
 │   ├── scheduler.go         # 定时任务调度器（每日扫描并补充缺失数据）
-│   └── scheduler_test.go
+│   ├── scheduler_test.go
+│   ├── pattern_service.go   # PatternService 接口（扫描、回测）
+│   └── pattern_service_test.go
 ├── api/                     # HTTP API 层（gin）
 │   ├── api.md               # API 接口文档（含 curl 示例）
 │   ├── README.md            # API 规范（一个接口一个文件）
@@ -36,15 +38,26 @@ trading/
 │   ├── get_stock_analysis_data.go       # GET /api/stocks/analysis
 │   ├── get_stock_analysis_data_test.go
 │   ├── append_stock_data.go             # POST /api/stocks/append
-│   └── append_stock_data_test.go
+│   ├── append_stock_data_test.go
+│   ├── scan_patterns.go                 # POST /api/patterns/scan
+│   └── backtest_patterns.go            # GET /api/patterns/backtest
 ├── pkg/
 │   ├── broker/              # 行情数据提供者
 │   │   ├── broker.go        # IBroker 统一接口
 │   │   ├── sina.go          # SinaBroker（新浪财经实现）
 │   │   └── sina_test.go     # 接口测试
-│   └── utils/               # 技术指标计算工具
-│       ├── indicator.go     # MACD / KDJ 计算
-│       └── indicator_test.go
+│   ├── utils/               # 技术指标计算工具
+│   │   ├── indicator.go     # MACD / KDJ 计算
+│   │   ├── indicator_test.go
+│   │   ├── volume_ma.go     # 成交量均线计算
+│   │   └── volume_ma_test.go
+│   └── strategy/            # 策略框架层
+│       ├── strategy.go              # Strategy 接口与 Signal 定义
+│       ├── scanner.go               # 多策略组合扫描器
+│       ├── scanner_test.go
+│       ├── volume_surge_pullback.go # 放量上涨缩量回调策略
+│       ├── volume_surge_pullback_test.go
+│       └── macd_divergence.go       # MACD 背离策略骨架
 └── shell/                   # 脚本工具
     └── save_historical.sh   # 批量保存历史数据脚本
 ```

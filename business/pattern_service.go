@@ -3,11 +3,11 @@ package business
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"trading/data"
 	"trading/model"
 	"trading/pkg/strategy"
+	"trading/pkg/utils"
 )
 
 // TradeRecord 单次交易记录
@@ -102,7 +102,7 @@ func (p *patternService) Backtest(ctx context.Context, code string, st strategy.
 		report.Trades = append(report.Trades, TradeRecord{
 			EntryDate: sig.Date,
 			ExitDate:  klines[entryIdx+holdDays].Date,
-			ReturnPct: round4(ret * 100),
+			ReturnPct: utils.Round4(ret * 100),
 		})
 	}
 
@@ -157,8 +157,4 @@ func findDateIndex(klines []*model.StockKline, date string) int {
 		}
 	}
 	return -1
-}
-
-func round4(v float64) float64 {
-	return math.Round(v*10000) / 10000
 }
