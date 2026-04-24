@@ -38,7 +38,7 @@ func NewScheduler(svc StockService, dailyRepo data.StockKlineDailyRepo, weeklyRe
 		dailyRepo:  dailyRepo,
 		weeklyRepo: weeklyRepo,
 		stopCh:     make(chan struct{}),
-		interval:   10 * time.Second,
+		interval:   5 * time.Second,
 		limiter:    indicator.NewLimiter(100),
 	}
 }
