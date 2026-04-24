@@ -52,7 +52,7 @@ func buildTestKlines() []*model.StockKline {
 
 func TestVolumeSurgePullbackName(t *testing.T) {
 	v := NewVolumeSurgePullback(DefaultVolumeSurgePullbackConfig())
-	if v.Name() != "volume_surge_pullback" {
+	if v.Name() != StrategyVolumeSurgePullback {
 		t.Fatalf("unexpected name: %s", v.Name())
 	}
 	if v.Description() == "" {

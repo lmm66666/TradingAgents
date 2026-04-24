@@ -127,7 +127,7 @@ func TestPatternServiceBacktest(t *testing.T) {
 	if report == nil {
 		t.Fatal("expected report")
 	}
-	if report.StrategyName != "volume_surge_pullback" {
+	if report.StrategyName != strategy.StrategyVolumeSurgePullback {
 		t.Fatalf("unexpected strategy name: %s", report.StrategyName)
 	}
 	if report.TotalTrades == 0 {

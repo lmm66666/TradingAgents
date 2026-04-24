@@ -15,6 +15,11 @@ const (
 	SignalWatch SignalType = "watch"
 )
 
+const (
+	StrategyVolumeSurgePullback = "volume_surge_pullback"
+	StrategyMACDDivergence      = "macd_divergence"
+)
+
 // Signal 策略产生的单个信号
 type Signal struct {
 	Code      string                 `json:"code"`
@@ -44,9 +49,9 @@ type Configurable interface {
 // ResolveStrategy 根据策略名称创建策略实例
 func ResolveStrategy(name string) (Strategy, error) {
 	switch name {
-	case "volume_surge_pullback":
+	case StrategyVolumeSurgePullback:
 		return NewVolumeSurgePullback(DefaultVolumeSurgePullbackConfig()), nil
-	case "macd_divergence":
+	case StrategyMACDDivergence:
 		return &MACDDivergence{}, nil
 	default:
 		return nil, fmt.Errorf("unknown strategy: %s", name)

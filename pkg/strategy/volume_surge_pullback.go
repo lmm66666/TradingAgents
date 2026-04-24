@@ -63,7 +63,7 @@ func NewVolumeSurgePullback(cfg VolumeSurgePullbackConfig) *VolumeSurgePullback 
 	return &VolumeSurgePullback{Config: cfg}
 }
 
-func (v *VolumeSurgePullback) Name() string        { return "volume_surge_pullback" }
+func (v *VolumeSurgePullback) Name() string        { return StrategyVolumeSurgePullback }
 func (v *VolumeSurgePullback) Description() string { return "识别放量上涨后缩量回调的技术形态" }
 
 // DefaultConfig 返回默认配置
