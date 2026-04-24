@@ -18,7 +18,7 @@ func TestStrategyScanAll(t *testing.T) {
 	}
 
 	s := NewStrategy("test").
-		AddFilter(filter.NewMATrendUp(5))
+		AddFilter(filter.NewMATrendUp(5, 1))
 
 	signals := s.ScanAll(klines)
 	if len(signals) == 0 {
@@ -50,7 +50,7 @@ func TestStrategyScan(t *testing.T) {
 	}
 
 	s := NewStrategy("test").
-		AddFilter(filter.NewMATrendUp(5))
+		AddFilter(filter.NewMATrendUp(5, 1))
 
 	sig := s.Scan(klines)
 	if sig == nil {
@@ -78,7 +78,7 @@ func TestStrategyMultipleFilters(t *testing.T) {
 
 	// 两个条件：MA5 向上 + 价格 > 10.5
 	s := NewStrategy("multi").
-		AddFilter(filter.NewMATrendUp(5)).
+		AddFilter(filter.NewMATrendUp(5, 1)).
 		AddFilter(&priceFilter{threshold: 10.5})
 
 	signals := s.ScanAll(klines)
@@ -112,7 +112,7 @@ func TestStrategyNoFilter(t *testing.T) {
 }
 
 func TestStrategyEmptyKlines(t *testing.T) {
-	s := NewStrategy("test").AddFilter(filter.NewMATrendUp(5))
+	s := NewStrategy("test").AddFilter(filter.NewMATrendUp(5, 1))
 	if s.Scan(nil) != nil {
 		t.Fatal("expected nil signal with empty klines")
 	}

@@ -16,7 +16,7 @@ func TestMATrendFilterUp(t *testing.T) {
 		}
 	}
 
-	f := NewMATrendUp(5)
+	f := NewMATrendUp(5, 1)
 	results := f.Filter(klines)
 
 	if len(results) != 10 {
@@ -45,7 +45,7 @@ func TestMATrendFilterDown(t *testing.T) {
 		}
 	}
 
-	f := NewMATrendDown(5)
+	f := NewMATrendDown(5, 1)
 	results := f.Filter(klines)
 
 	if len(results) != 10 {
@@ -74,7 +74,7 @@ func TestMATrendFilterConsecutiveUp(t *testing.T) {
 		}
 	}
 
-	f := NewMATrendUp(5).WithConsecutive(10)
+	f := NewMATrendUp(5, 10)
 	results := f.Filter(klines)
 
 	if len(results) != 15 {
@@ -110,7 +110,7 @@ func TestMATrendFilterConsecutiveBreak(t *testing.T) {
 		}
 	}
 
-	f := NewMATrendUp(5).WithConsecutive(10)
+	f := NewMATrendUp(5, 10)
 	results := f.Filter(klines)
 
 	// 第 8 天打断后，第 8~17 天都无法满足连续 10 天上涨
@@ -122,7 +122,7 @@ func TestMATrendFilterConsecutiveBreak(t *testing.T) {
 }
 
 func TestMATrendFilterEmpty(t *testing.T) {
-	f := NewMATrendUp(5)
+	f := NewMATrendUp(5, 1)
 	results := f.Filter(nil)
 	if results != nil {
 		t.Fatal("expected nil for empty klines")

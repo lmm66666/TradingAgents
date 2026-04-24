@@ -8,15 +8,15 @@ import (
 type MATrendFilter struct {
 	Period      int
 	Up          bool
-	Consecutive int // 连续 N 天保持趋势才算有效，默认 1
+	Consecutive int // 连续天数
 }
 
-func NewMATrendUp(period int) *MATrendFilter {
-	return &MATrendFilter{Period: period, Up: true, Consecutive: 1}
+func NewMATrendUp(period, consecutive int) *MATrendFilter {
+	return &MATrendFilter{Period: period, Up: true, Consecutive: consecutive}
 }
 
-func NewMATrendDown(period int) *MATrendFilter {
-	return &MATrendFilter{Period: period, Up: false, Consecutive: 1}
+func NewMATrendDown(period, consecutive int) *MATrendFilter {
+	return &MATrendFilter{Period: period, Up: false, Consecutive: consecutive}
 }
 
 func (f *MATrendFilter) WithConsecutive(n int) *MATrendFilter {
@@ -36,25 +36,18 @@ func (f *MATrendFilter) Filter(klines []*model.StockKline) []Result {
 
 	maResults := indicator.ComputeMA(prices, f.Period)
 	results := make([]Result, len(klines))
-	for i := range maResults {
-		valid := false
-		if i >= f.Consecutive {
-			valid = true
-			for j := 0; j < f.Consecutive; j++ {
-				if f.Up {
-					if maResults[i-j] <= maResults[i-j-1] {
-						valid = false
-						break
-					}
-				} else {
-					if maResults[i-j] >= maResults[i-j-1] {
-						valid = false
-						break
-					}
-				}
-			}
+
+	streak := 0
+	for i := 1; i < len(maResults); i++ {
+		if (f.Up && maResults[i] > maResults[i-1]) || (!f.Up && maResults[i] < maResults[i-1]) {
+			streak++
+		} else {
+			streak = 0
 		}
-		results[i] = Result{Date: klines[i].Date, Valid: valid}
+		results[i] = Result{
+			Date:  klines[i].Date,
+			Valid: streak >= f.Consecutive,
+		}
 	}
 	return results
 }
