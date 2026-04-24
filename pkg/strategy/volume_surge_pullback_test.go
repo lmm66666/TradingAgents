@@ -90,11 +90,13 @@ func TestVolumeSurgePullbackScan(t *testing.T) {
 	if last.Score < 70 {
 		t.Fatalf("expected score >= 70, got %f", last.Score)
 	}
-	if last.SubScores["kdj_oversold"] <= 0 {
-		t.Fatal("expected kdj_oversold score > 0")
+	// KDJ 和 MA60 是硬条件，已在 SubScores 中移除
+	// 检查 Context 中包含 kdj_j 和 ma60
+	if _, ok := last.Context["kdj_j"]; !ok {
+		t.Fatal("expected kdj_j in context")
 	}
-	if last.SubScores["ma60_trend"] != 100 {
-		t.Fatalf("expected ma60_trend = 100, got %f", last.SubScores["ma60_trend"])
+	if _, ok := last.Context["ma60"]; !ok {
+		t.Fatal("expected ma60 in context")
 	}
 }
 
@@ -151,9 +153,8 @@ func TestVolumeSurgePullbackMA60Declining(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	for _, s := range signals {
-		if s.SubScores["ma60_trend"] == 100 {
-			t.Fatal("expected ma60_trend = 0 when MA60 is declining")
-		}
+	// MA60 向下是硬条件，不应产生任何信号
+	if len(signals) != 0 {
+		t.Fatalf("expected no signals when MA60 declining, got %d", len(signals))
 	}
 }

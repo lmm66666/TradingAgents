@@ -22,8 +22,6 @@ type VolumeSurgePullbackConfig struct {
 		PriceRally     float64
 		PullbackVolume float64
 		PullbackDepth  float64
-		KDJOverSold    float64
-		MA60Trend      float64
 	}
 }
 
@@ -42,17 +40,23 @@ func DefaultVolumeSurgePullbackConfig() VolumeSurgePullbackConfig {
 			PriceRally     float64
 			PullbackVolume float64
 			PullbackDepth  float64
-			KDJOverSold    float64
-			MA60Trend      float64
 		}{
-			VolumeSurge:    0.20,
-			PriceRally:     0.15,
-			PullbackVolume: 0.25,
-			PullbackDepth:  0.20,
-			KDJOverSold:    0.10,
-			MA60Trend:      0.10,
+			VolumeSurge:    0.25,
+			PriceRally:     0.20,
+			PullbackVolume: 0.30,
+			PullbackDepth:  0.25,
 		},
 	}
+}
+
+// pullbackWindow 记录某个回调窗口的上下文
+type pullbackWindow struct {
+	surgeIdx       int
+	peakIdx        int
+	peakPrice      float64
+	pullbackPct    float64
+	pullbackDays   int
+	avgPullbackVol int64
 }
 
 // VolumeSurgePullback 放量上涨缩量回调策略
@@ -83,29 +87,113 @@ func (v *VolumeSurgePullback) ValidateConfig(cfg interface{}) error {
 }
 
 // Scan 扫描K线序列，返回匹配的信号列表
+// 三个条件独立计算，取交集：
+//  1. 处于放量上涨后的有效回调窗口内
+//  2. KDJ J 值 < 阈值（超卖）
+//  3. MA60 向上（当日 > 昨日）
 func (v *VolumeSurgePullback) Scan(klines []*model.StockKline) ([]Signal, error) {
 	cfg := v.Config
-	if len(klines) < cfg.VolumeMAPeriod+1 {
+	n := len(klines)
+	if n < cfg.VolumeMAPeriod+1 {
 		return nil, nil
 	}
 
-	volumes := make([]int64, len(klines))
-	closes := make([]float64, len(klines))
+	// Step 1: 预计算所有指标
+	volumes := make([]int64, n)
+	closes := make([]float64, n)
 	for i, k := range klines {
 		volumes[i] = k.Volume
 		closes[i] = k.Close
 	}
 
 	vma := utils.ComputeVolumeMA(volumes, cfg.VolumeMAPeriod)
-	maMap := utils.ComputeMA(closes, []int{5, 20, 60})
-	ma5 := maMap[5]
-	ma20 := maMap[20]
-	ma60 := maMap[60]
+	ma60 := utils.ComputeMA(closes, []int{60})[60]
 	kdjResults := utils.ComputeKDJ(klines)
 
-	var signals []Signal
+	// Step 2: 找出所有放量上涨+回调窗口
+	pullbackWindows := v.findPullbackWindows(klines, volumes, vma)
 
-	for i := cfg.VolumeMAPeriod; i < len(klines); i++ {
+	// 为每个回调窗口内的天建立索引，保留最强的窗口
+	windowByDay := make(map[int]*pullbackWindow)
+	for i := range pullbackWindows {
+		w := &pullbackWindows[i]
+		for d := w.peakIdx + 1; d < n; d++ {
+			pullbackPct := (w.peakPrice - klines[d].Close) / w.peakPrice * 100
+			days := d - w.peakIdx
+			if pullbackPct > cfg.MaxPullbackPct || days > cfg.MaxPullbackDays {
+				break
+			}
+			if existing, ok := windowByDay[d]; !ok || w.peakPrice > existing.peakPrice {
+				windowByDay[d] = w
+			}
+		}
+	}
+
+	// Step 3: 找出所有 KDJ J < 阈值的天
+	kdjOversold := make(map[int]bool)
+	for i := range kdjResults {
+		if kdjResults[i].J < cfg.KDJThreshold {
+			kdjOversold[i] = true
+		}
+	}
+
+	// Step 4: 找出所有 MA60 向上的天
+	ma60Rising := make(map[int]bool)
+	for i := 1; i < n; i++ {
+		if ma60[i] > ma60[i-1] {
+			ma60Rising[i] = true
+		}
+	}
+
+	// Step 5: 三个条件取交集 → 生成 Buy 信号
+	var signals []Signal
+	for i := cfg.VolumeMAPeriod; i < n; i++ {
+		w, inWindow := windowByDay[i]
+		if !inWindow || !kdjOversold[i] || !ma60Rising[i] {
+			continue
+		}
+
+		score, subScores := v.calculateScore(klines, volumes, vma, w, i)
+		if score < cfg.MinScore {
+			continue
+		}
+
+		signal := Signal{
+			Code:      klines[i].Code,
+			Date:      klines[i].Date,
+			Strategy:  v.Name(),
+			Type:      SignalBuy,
+			Phase:     "pullback",
+			Score:     math.Round(score*100) / 100,
+			SubScores: subScores,
+			Context: map[string]interface{}{
+				"surge_date":       klines[w.surgeIdx].Date,
+				"peak_date":        klines[w.peakIdx].Date,
+				"surge_volume":     volumes[w.surgeIdx],
+				"avg_pullback_vol": w.avgPullbackVol,
+				"max_pullback_pct": math.Round(w.pullbackPct*100) / 100,
+				"pullback_days":    w.pullbackDays,
+				"kdj_j":            math.Round(kdjResults[i].J*100) / 100,
+				"ma60":             math.Round(ma60[i]*10000) / 10000,
+			},
+		}
+		signals = append(signals, signal)
+	}
+
+	return signals, nil
+}
+
+// findPullbackWindows 找出所有放量上涨事件对应的回调窗口
+func (v *VolumeSurgePullback) findPullbackWindows(
+	klines []*model.StockKline,
+	volumes []int64,
+	vma []float64,
+) []pullbackWindow {
+	cfg := v.Config
+	n := len(klines)
+	var windows []pullbackWindow
+
+	for i := cfg.VolumeMAPeriod; i < n; i++ {
 		if vma[i] == 0 {
 			continue
 		}
@@ -115,131 +203,76 @@ func (v *VolumeSurgePullback) Scan(klines []*model.StockKline) ([]Signal, error)
 			continue
 		}
 
+		// 找峰值
 		surgeIdx := i
 		peakIdx := i
 		peakPrice := klines[i].Close
-
-		for j := i + 1; j < len(klines); j++ {
-			currentPrice := klines[j].Close
-
-			if currentPrice > peakPrice {
+		for j := i + 1; j < n; j++ {
+			if klines[j].Close >= peakPrice {
 				peakIdx = j
-				peakPrice = currentPrice
-				continue
-			}
-
-			if currentPrice == peakPrice {
-				continue
-			}
-
-			pullbackPct := (peakPrice - currentPrice) / peakPrice * 100
-			pullbackDays := j - peakIdx
-
-			if pullbackPct > cfg.MaxPullbackPct || pullbackDays > cfg.MaxPullbackDays {
+				peakPrice = klines[j].Close
+			} else {
 				break
-			}
-
-			// 硬条件 1: KDJ J 值必须低于阈值（超卖）
-			if kdjResults[j].J >= cfg.KDJThreshold {
-				continue
-			}
-
-			// 硬条件 2: MA60 必须向上（当日 > 昨日）
-			if j < 1 || ma60[j] <= ma60[j-1] {
-				continue
-			}
-
-			score, subScores := v.calculateScore(klines, volumes, vma, ma5, ma20, ma60, kdjResults, surgeIdx, peakIdx, j)
-			if score >= cfg.MinScore {
-				signal := Signal{
-					Code:      klines[j].Code,
-					Date:      klines[j].Date,
-					Strategy:  v.Name(),
-					Type:      SignalBuy,
-					Phase:     "pullback",
-					Score:     math.Round(score*100) / 100,
-					SubScores: subScores,
-					Context: map[string]interface{}{
-						"surge_date":       klines[surgeIdx].Date,
-						"peak_date":        klines[peakIdx].Date,
-						"surge_volume":     volumes[surgeIdx],
-						"avg_pullback_vol": v.avgVolume(volumes, peakIdx+1, j),
-						"max_pullback_pct": math.Round(pullbackPct*100) / 100,
-						"pullback_days":    pullbackDays,
-						"kdj_j":            math.Round(kdjResults[j].J*100) / 100,
-						"ma60":             math.Round(ma60[j]*10000) / 10000,
-					},
-				}
-				signals = append(signals, signal)
 			}
 		}
 
+		days := peakIdx - surgeIdx
+		windows = append(windows, pullbackWindow{
+			surgeIdx:       surgeIdx,
+			peakIdx:        peakIdx,
+			peakPrice:      peakPrice,
+			pullbackPct:    0,
+			pullbackDays:   days,
+			avgPullbackVol: 0,
+		})
+
+		// 跳过已覆盖的区间
 		if peakIdx > i {
 			i = peakIdx
 		}
 	}
 
-	return signals, nil
+	return windows
 }
 
 func (v *VolumeSurgePullback) calculateScore(
 	klines []*model.StockKline,
 	volumes []int64,
 	vma []float64,
-	_, _, ma60 []float64,
-	kdjResults []utils.KDJResult,
-	surgeIdx, peakIdx, currentIdx int,
+	w *pullbackWindow,
+	currentIdx int,
 ) (float64, map[string]float64) {
 	cfg := v.Config
-	w := cfg.Weights
+	weights := cfg.Weights
 
-	volRatio := float64(volumes[surgeIdx]) / vma[surgeIdx]
+	volRatio := float64(volumes[w.surgeIdx]) / vma[w.surgeIdx]
 	volumeSurgeScore := math.Min(volRatio, 3.0) / 3.0 * 100
 
-	rallyPct := (klines[peakIdx].Close - klines[surgeIdx].Open) / klines[surgeIdx].Open * 100
+	rallyPct := (klines[w.peakIdx].Close - klines[w.surgeIdx].Open) / klines[w.surgeIdx].Open * 100
 	priceRallyScore := math.Min(rallyPct, 8.0) / 8.0 * 100
 
-	avgPullbackVol := v.avgVolume(volumes, peakIdx+1, currentIdx)
+	avgPullbackVol := v.avgVolume(volumes, w.peakIdx+1, currentIdx)
 	pullbackVolRatio := 0.0
-	if volumes[surgeIdx] > 0 {
-		pullbackVolRatio = float64(avgPullbackVol) / float64(volumes[surgeIdx])
+	if volumes[w.surgeIdx] > 0 {
+		pullbackVolRatio = float64(avgPullbackVol) / float64(volumes[w.surgeIdx])
 	}
 	pullbackVolumeScore := math.Max(0, (1.0-pullbackVolRatio)*100)
 
 	currentPrice := klines[currentIdx].Close
-	peakPrice := klines[peakIdx].Close
+	peakPrice := klines[w.peakIdx].Close
 	pullbackPct := (peakPrice - currentPrice) / peakPrice * 100
 	pullbackDepthScore := math.Max(0, (1.0-pullbackPct/cfg.MaxPullbackPct)*100)
 
-	// KDJ 超卖得分：J 值越低分越高，J <= 0 满分
-	jVal := kdjResults[currentIdx].J
-	kdjScore := 0.0
-	if jVal <= 0 {
-		kdjScore = 100.0
-	} else if jVal < cfg.KDJThreshold {
-		kdjScore = (1.0 - jVal/cfg.KDJThreshold) * 100
-	}
-
-	// MA60 趋势得分：向上 = 100，走平或向下 = 0
-	ma60TrendScore := 0.0
-	if currentIdx >= 1 && ma60[currentIdx] > ma60[currentIdx-1] {
-		ma60TrendScore = 100.0
-	}
-
-	total := volumeSurgeScore*w.VolumeSurge +
-		priceRallyScore*w.PriceRally +
-		pullbackVolumeScore*w.PullbackVolume +
-		pullbackDepthScore*w.PullbackDepth +
-		kdjScore*w.KDJOverSold +
-		ma60TrendScore*w.MA60Trend
+	total := volumeSurgeScore*weights.VolumeSurge +
+		priceRallyScore*weights.PriceRally +
+		pullbackVolumeScore*weights.PullbackVolume +
+		pullbackDepthScore*weights.PullbackDepth
 
 	subScores := map[string]float64{
 		"volume_surge":    math.Round(volumeSurgeScore*100) / 100,
 		"price_rally":     math.Round(priceRallyScore*100) / 100,
 		"pullback_volume": math.Round(pullbackVolumeScore*100) / 100,
 		"pullback_depth":  math.Round(pullbackDepthScore*100) / 100,
-		"kdj_oversold":    math.Round(kdjScore*100) / 100,
-		"ma60_trend":      math.Round(ma60TrendScore*100) / 100,
 	}
 
 	return total, subScores
