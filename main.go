@@ -33,9 +33,9 @@ func main() {
 	scheduler := business.NewScheduler(svc, d.StockKlineDaily(), d.StockKlineWeekly())
 	scheduler.Start(context.Background(), 16, 0)
 
-	patternSvc := business.NewPatternService(d.StockKlineDaily())
+	backtestSvc := business.NewBacktestService(d.StockKlineDaily())
 
-	r := api.NewRouter(svc, scheduler, patternSvc)
+	r := api.NewRouter(svc, scheduler, backtestSvc)
 
 	log.Println("Server starting on :8080")
 	if err := r.Run(":8080"); err != nil {

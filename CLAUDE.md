@@ -1,6 +1,16 @@
 # 项目概述
 这是一个使用 agent 分析股票数据辅助投资决策的 Go 项目。
 
+# 项目架构
+
+三层分离：
+```
+utils/        → 纯计算（MA、MACD、KDJ）
+strategy/     → 每个策略 = 1 个条件，返回符合要求的日期+评分
+business/     → BacktestService 组合多个策略取交集，回测收益
+api/          → HTTP 接口层
+```
+
 # 项目结构
 
 ```
@@ -25,8 +35,8 @@ trading/
 │   ├── stock_service_test.go
 │   ├── scheduler.go         # 定时任务调度器（每日扫描并补充缺失数据）
 │   ├── scheduler_test.go
-│   ├── pattern_service.go   # PatternService 接口（扫描、回测）
-│   └── pattern_service_test.go
+│   ├── backtest_service.go  # BacktestService 多策略交集扫描与回测
+│   └── backtest_service_test.go
 ├── api/                     # HTTP API 层（gin）
 │   ├── api.md               # API 接口文档（含 curl 示例）
 │   ├── README.md            # API 规范（一个接口一个文件）
@@ -46,7 +56,7 @@ trading/
 │   │   ├── broker.go        # IBroker 统一接口
 │   │   ├── sina.go          # SinaBroker（新浪财经实现）
 │   │   └── sina_test.go     # 接口测试
-│   ├── utils/               # 技术指标计算工具
+│   ├── utils/               # 技术指标计算工具（纯计算，无业务逻辑）
 │   │   ├── round.go         # Round4 四舍五入工具
 │   │   ├── ma.go            # SMA / EMA / 成交量均线
 │   │   ├── macd.go          # MACD 计算
@@ -56,11 +66,16 @@ trading/
 │   │   ├── volume_ma_test.go
 │   │   ├── limiter.go
 │   │   └── limiter_test.go
-│   └── strategy/            # 策略框架层
-│       ├── strategy.go              # Strategy 接口与 Signal 定义
-│       ├── volume_surge_pullback.go # 放量上涨缩量回调策略
-│       ├── volume_surge_pullback_test.go
-│       └── macd_divergence.go       # MACD 背离策略骨架
+│   └── strategy/            # 策略层（每个策略 = 一个条件）
+│       ├── strategy.go              # Strategy 接口、Signal 定义、ResolveStrategy
+│       ├── volume_surge.go          # 放量上涨+缩量回调条件
+│       ├── volume_surge_test.go
+│       ├── kdj_oversold.go          # KDJ 超卖条件（J < 阈值）
+│       ├── kdj_oversold_test.go
+│       ├── ma60_trend.go            # MA60 向上条件
+│       ├── ma60_trend_test.go
+│       ├── macd_divergence.go       # MACD 背离条件（骨架）
+│       └── README.md                # 策略开发规范
 └── shell/                   # 脚本工具
     └── save_historical.sh   # 批量保存历史数据脚本
 ```

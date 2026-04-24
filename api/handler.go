@@ -10,14 +10,14 @@ import (
 
 // StockHandler 股票数据 HTTP 处理器
 type StockHandler struct {
-	svc        business.StockService
-	scheduler  business.Scheduler
-	patternSvc business.PatternService
+	svc         business.StockService
+	scheduler   business.Scheduler
+	backtestSvc business.BacktestService
 }
 
 // NewStockHandler 创建 StockHandler
-func NewStockHandler(svc business.StockService, scheduler business.Scheduler, patternSvc business.PatternService) *StockHandler {
-	return &StockHandler{svc: svc, scheduler: scheduler, patternSvc: patternSvc}
+func NewStockHandler(svc business.StockService, scheduler business.Scheduler, backtestSvc business.BacktestService) *StockHandler {
+	return &StockHandler{svc: svc, scheduler: scheduler, backtestSvc: backtestSvc}
 }
 
 // response 统一 JSON 响应结构

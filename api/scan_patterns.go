@@ -9,9 +9,9 @@ import (
 )
 
 type scanPatternsRequest struct {
-	Strategy string   `json:"strategy" binding:"required"`
-	MinScore float64  `json:"min_score"`
-	Codes    []string `json:"codes"`
+	Strategies []string `json:"strategies" binding:"required"`
+	MinScore   float64  `json:"min_score"`
+	Codes      []string `json:"codes"`
 }
 
 // ScanPatterns POST /api/patterns/scan
@@ -22,10 +22,14 @@ func (h *StockHandler) ScanPatterns(c *gin.Context) {
 		return
 	}
 
-	st, err := strategy.ResolveStrategy(req.Strategy)
-	if err != nil {
-		respondError(c, http.StatusBadRequest, err.Error())
-		return
+	strs := make([]strategy.Strategy, 0, len(req.Strategies))
+	for _, name := range req.Strategies {
+		st, err := strategy.ResolveStrategy(name)
+		if err != nil {
+			respondError(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		strs = append(strs, st)
 	}
 
 	if req.MinScore == 0 {
@@ -33,21 +37,18 @@ func (h *StockHandler) ScanPatterns(c *gin.Context) {
 	}
 
 	var signals []strategy.Signal
+	var err error
 
 	if len(req.Codes) > 0 {
 		for _, code := range req.Codes {
-			result, scanErr := h.patternSvc.Scan(c.Request.Context(), code, st)
+			result, scanErr := h.backtestSvc.Scan(c.Request.Context(), code, strs, req.MinScore)
 			if scanErr != nil {
 				continue
 			}
-			for _, s := range result {
-				if s.Score >= req.MinScore {
-					signals = append(signals, s)
-				}
-			}
+			signals = append(signals, result...)
 		}
 	} else {
-		signals, err = h.patternSvc.ScanAll(c.Request.Context(), st, req.MinScore)
+		signals, err = h.backtestSvc.ScanAll(c.Request.Context(), strs, req.MinScore)
 		if err != nil {
 			respondError(c, http.StatusInternalServerError, err.Error())
 			return
