@@ -22,4 +22,11 @@ type IBroker interface {
 	// length: 数据条数
 	// 返回: StockKline 数组（按日期升序）
 	GetStockHistorical(ctx context.Context, symbol string, scale int, length int) ([]model.StockKline, error)
+
+	// GetFinancialReportHistorical 获取历史财报数据
+	// symbol: 股票代码（如 sh600004）
+	// page: 页码，从 1 开始
+	// num: 每页条数
+	// 返回: 财报列表、总条数
+	GetFinancialReportHistorical(ctx context.Context, symbol string, page, num int) ([]*model.FinancialReport, int, error)
 }

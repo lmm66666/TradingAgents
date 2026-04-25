@@ -284,3 +284,190 @@ func parseKLineResponse(symbol, body string) ([]model.StockKline, error) {
 	}
 	return result, nil
 }
+
+// GetFinancialReportHistorical 获取历史财报数据
+func (p *SinaBroker) GetFinancialReportHistorical(ctx context.Context, symbol string, page, num int) ([]*model.FinancialReport, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if num < 1 {
+		num = 10
+	}
+
+	callback := fmt.Sprintf("fin_cb_%d", time.Now().UnixNano())
+	u, err := url.Parse("https://quotes.sina.cn/cn/api/openapi.php/CompanyFinanceService.getFinanceReport2022")
+	if err != nil {
+		return nil, 0, fmt.Errorf("invalid url: %w", err)
+	}
+	q := u.Query()
+	q.Set("paperCode", symbol)
+	q.Set("source", "gjzb")
+	q.Set("type", "0")
+	q.Set("page", strconv.Itoa(page))
+	q.Set("num", strconv.Itoa(num))
+	q.Set("callback", callback)
+	u.RawQuery = q.Encode()
+
+	body, err := p.getBytesURL(ctx, u.String(), map[string]string{
+		"Referer": "https://money.finance.sina.com.cn/",
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("fetch financial report failed: %w", err)
+	}
+
+	code := strings.TrimPrefix(symbol, "sh")
+	code = strings.TrimPrefix(code, "sz")
+
+	return parseFinancialReportResponse(code, string(body))
+}
+
+// --- financial report parser ---
+
+// 原始 API 数据结构，仅在 broker 层内部使用
+
+type financialReportDateItem struct {
+	DateValue string `json:"date_value"`
+	DateDesc  string `json:"date_description"`
+	DateType  int    `json:"date_type"`
+}
+
+type financialReportIndicator struct {
+	ItemField     string `json:"item_field"`
+	ItemTitle     string `json:"item_title"`
+	ItemValue     string `json:"item_value"`
+	ItemTongbi    any    `json:"item_tongbi"`
+	ItemPrecision string `json:"item_precision"`
+	ItemSource    string `json:"item_source"`
+}
+
+type financialReportDetail struct {
+	RType       string                     `json:"rType"`
+	RCurrency   string                     `json:"rCurrency"`
+	DataSource  string                     `json:"data_source"`
+	IsAudit     string                     `json:"is_audit"`
+	PublishDate string                     `json:"publish_date"`
+	IsExistYOY  bool                       `json:"is_exist_yoy"`
+	Data        []financialReportIndicator `json:"data"`
+}
+
+type financialReportData struct {
+	ReportCount string                           `json:"report_count"`
+	ReportDate  []financialReportDateItem        `json:"report_date"`
+	ReportList  map[string]financialReportDetail `json:"report_list"`
+}
+
+type financialReportResponse struct {
+	Result struct {
+		Status struct {
+			Code int `json:"code"`
+		} `json:"status"`
+		Data *financialReportData `json:"data"`
+	} `json:"result"`
+}
+
+func extractJSONP(body string) (string, error) {
+	body = strings.TrimPrefix(body, "/*<script>location.href='//sina.com';</script>*/")
+	body = strings.TrimSpace(body)
+
+	start := strings.Index(body, "(")
+	end := strings.LastIndex(body, ")")
+	if start == -1 || end == -1 || start >= end {
+		return "", fmt.Errorf("invalid JSONP format")
+	}
+	return body[start+1 : end], nil
+}
+
+func parseFinancialReportResponse(code, body string) ([]*model.FinancialReport, int, error) {
+	jsonStr, err := extractJSONP(body)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var resp financialReportResponse
+	if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
+		return nil, 0, fmt.Errorf("parse financial report JSON failed: %w", err)
+	}
+
+	if resp.Result.Status.Code != 0 {
+		return nil, 0, fmt.Errorf("financial report API error: code=%d", resp.Result.Status.Code)
+	}
+
+	if resp.Result.Data == nil {
+		return nil, 0, fmt.Errorf("no financial report data")
+	}
+
+	totalCount, _ := strconv.Atoi(resp.Result.Data.ReportCount)
+	reports := make([]*model.FinancialReport, 0, len(resp.Result.Data.ReportDate))
+
+	for _, dateItem := range resp.Result.Data.ReportDate {
+		detail, ok := resp.Result.Data.ReportList[dateItem.DateValue]
+		if !ok {
+			continue
+		}
+
+		report := &model.FinancialReport{
+			Code:       code,
+			ReportDate: dateItem.DateValue,
+			ReportType: dateItem.DateType,
+		}
+		fillFinancialReport(report, detail)
+		reports = append(reports, report)
+	}
+
+	return reports, totalCount, nil
+}
+
+func buildFieldMap(data []financialReportIndicator) map[string]financialReportIndicator {
+	m := make(map[string]financialReportIndicator, len(data))
+	for _, ind := range data {
+		if ind.ItemField != "" {
+			m[ind.ItemField] = ind
+		}
+	}
+	return m
+}
+
+func setFloat(fv map[string]financialReportIndicator, field string, target *float64) {
+	if ind, ok := fv[field]; ok {
+		*target, _ = strconv.ParseFloat(ind.ItemValue, 64)
+	}
+}
+
+func fillFinancialReport(report *model.FinancialReport, detail financialReportDetail) {
+	fv := buildFieldMap(detail.Data)
+
+	// 利润表
+	setFloat(fv, "BIZTOTINCO", &report.TotalRevenue)
+	setFloat(fv, "BIZTOTCOST", &report.TotalCost)
+	setFloat(fv, "PARENETP", &report.NetProfit)
+	setFloat(fv, "NPCUT", &report.NetProfitCut)
+
+	// 盈利能力
+	setFloat(fv, "SGPMARGIN", &report.GrossMargin)
+	setFloat(fv, "SNPMARGINCONMS", &report.NetMargin)
+	setFloat(fv, "ROEWEIGHTED", &report.ROE)
+	setFloat(fv, "ROA", &report.ROA)
+
+	// 偿债能力
+	setFloat(fv, "ASSLIABRT", &report.AssetLiabilityRatio)
+	setFloat(fv, "CURRENTRT", &report.CurrentRatio)
+	setFloat(fv, "QUICKRT", &report.QuickRatio)
+
+	// 运营效率
+	setFloat(fv, "TATURNRT", &report.TotalAssetTurnover)
+	setFloat(fv, "INVTURNRT", &report.InventoryTurnover)
+	setFloat(fv, "ACCRECGTURNRT", &report.ReceivablesTurnover)
+
+	// 现金流
+	setFloat(fv, "MANANETR", &report.OperatingCashFlow)
+	setFloat(fv, "OPNCFPS", &report.OperatingCashFlowPerShare)
+
+	// 每股指标
+	setFloat(fv, "EPSBASIC", &report.EPS)
+	setFloat(fv, "NAPS", &report.BPS)
+
+	// 其他盈利指标
+	setFloat(fv, "OPPRORT", &report.OperatingMargin)
+	setFloat(fv, "EBITMARGIN", &report.EBITMargin)
+	setFloat(fv, "PROTOTCRT", &report.CostProfitRatio)
+}

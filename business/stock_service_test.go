@@ -29,6 +29,10 @@ func (m *mockBroker) GetStockHistorical(ctx context.Context, symbol string, scal
 	return m.dataByScale[scale], nil
 }
 
+func (m *mockBroker) GetFinancialReportHistorical(ctx context.Context, symbol string, page, num int) ([]*model.FinancialReport, int, error) {
+	return nil, 0, nil
+}
+
 // mockDailyRepo 模拟日线数据仓库
 type mockDailyRepo struct {
 	k       []*model.StockKlineDaily
