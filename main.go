@@ -28,7 +28,7 @@ func main() {
 	}
 
 	b := broker.NewSinaBroker()
-	svc := business.NewStockService(b, d.StockKlineDaily(), d.StockKlineWeekly())
+	svc := business.NewStockService(b, d.StockKlineDaily(), d.StockKlineWeekly(), d.FinancialReport())
 
 	scheduler := business.NewScheduler(svc, d.StockKlineDaily(), d.StockKlineWeekly())
 	scheduler.Start(context.Background(), 16, 0)

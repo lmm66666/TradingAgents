@@ -24,7 +24,7 @@ func New(cfg config.DB) (*Data, error) {
 		return nil, fmt.Errorf("open mysql failed: %w", err)
 	}
 
-	if err := db.AutoMigrate(&model.StockKlineDaily{}, &model.StockKlineWeekly{}); err != nil {
+	if err := db.AutoMigrate(&model.StockKlineDaily{}, &model.StockKlineWeekly{}, &model.FinancialReport{}); err != nil {
 		return nil, fmt.Errorf("auto migrate failed: %w", err)
 	}
 
@@ -44,4 +44,9 @@ func (d *Data) StockKlineDaily() StockKlineDailyRepo {
 // StockKlineWeekly 返回周线 Repository
 func (d *Data) StockKlineWeekly() StockKlineWeeklyRepo {
 	return newStockKlineWeeklyRepo(d.db)
+}
+
+// FinancialReport 返回财报 Repository
+func (d *Data) FinancialReport() FinancialReportRepo {
+	return newFinancialReportRepo(d.db)
 }

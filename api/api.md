@@ -61,7 +61,31 @@ curl -X POST http://localhost:8080/api/stocks/append
 
 ---
 
-### 3. 股票买点扫描
+### 3. 保存股票财报数据
+
+从行情数据源获取指定股票近5年（20份季度）的财报数据，写入数据库。
+
+- **Method**: `POST`
+- **Path**: `/api/stocks/financial-report`
+- **Content-Type**: `application/json`
+
+#### 请求参数
+
+| 字段 | 类型   | 必填 | 说明                     |
+|------|--------|------|--------------------------|
+| code | string | 是   | 股票代码，如 `600312`    |
+
+#### 请求示例
+
+```bash
+curl -X POST http://localhost:8080/api/stocks/financial-report \
+  -H "Content-Type: application/json" \
+  -d '{"code": "600312"}'
+```
+
+---
+
+### 4. 股票买点扫描
 
 按指定策略名称扫描所有股票，判断最新数据日期是否为买点，返回符合条件的股票代码列表。
 

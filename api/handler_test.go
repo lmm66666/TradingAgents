@@ -22,6 +22,10 @@ func (m *mockStockService) AppendStockData(ctx context.Context, code string) err
 	return m.saveErr
 }
 
+func (m *mockStockService) SaveFinancialReportData(ctx context.Context, code string) error {
+	return m.saveErr
+}
+
 // mockScheduler 模拟调度器
 type mockScheduler struct {
 	triggerErr     error
@@ -44,5 +48,6 @@ func setupTestRouter(svc business.StockService, scheduler business.Scheduler, an
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
 	r.GET("/api/stocks/signal", h.GetStockBuySignals)
 	r.POST("/api/stocks/append", h.AppendStockData)
+	r.POST("/api/stocks/financial-report", h.SaveFinancialReportData)
 	return r
 }

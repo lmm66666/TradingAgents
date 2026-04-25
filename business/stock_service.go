@@ -11,20 +11,25 @@ import (
 	"trading/pkg/broker"
 )
 
+const defaultFinancialReportYears = 5
+const defaultFinancialReportNum = defaultFinancialReportYears * 4
+
 type StockService interface {
 	SaveHistoricalData(ctx context.Context, code string) error
 	AppendStockData(ctx context.Context, code string) error
+	SaveFinancialReportData(ctx context.Context, code string) error
 }
 
 type stockService struct {
-	broker     broker.IBroker
-	dailyRepo  data.StockKlineDailyRepo
-	weeklyRepo data.StockKlineWeeklyRepo
+	broker       broker.IBroker
+	dailyRepo    data.StockKlineDailyRepo
+	weeklyRepo   data.StockKlineWeeklyRepo
+	financialRepo data.FinancialReportRepo
 }
 
 // NewStockService 创建 StockService 实例
-func NewStockService(b broker.IBroker, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo) StockService {
-	return &stockService{broker: b, dailyRepo: dailyRepo, weeklyRepo: weeklyRepo}
+func NewStockService(b broker.IBroker, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo, financialRepo data.FinancialReportRepo) StockService {
+	return &stockService{broker: b, dailyRepo: dailyRepo, weeklyRepo: weeklyRepo, financialRepo: financialRepo}
 }
 
 // SaveHistoricalData 从 broker 获取历史数据并保存到 DB
@@ -207,4 +212,28 @@ func toWeekly(klines []*model.StockKline) []*model.StockKlineWeekly {
 		result = append(result, &w)
 	}
 	return result
+}
+
+// SaveFinancialReportData 从 broker 获取5年财报数据并保存到 DB
+// 一年4个季度，5年共20份财报
+func (s *stockService) SaveFinancialReportData(ctx context.Context, code string) error {
+	symbol, err := toSymbol(code)
+	if err != nil {
+		return err
+	}
+
+	reports, _, err := s.broker.GetFinancialReportHistorical(ctx, symbol, 1, defaultFinancialReportNum)
+	if err != nil {
+		return fmt.Errorf("fetch financial report failed: %w", err)
+	}
+
+	if len(reports) == 0 {
+		return nil
+	}
+
+	if err := s.financialRepo.Upsert(ctx, reports); err != nil {
+		return fmt.Errorf("upsert financial report failed: %w", err)
+	}
+
+	return nil
 }
