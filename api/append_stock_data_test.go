@@ -10,7 +10,7 @@ import (
 
 func TestAppendStockDataSuccess(t *testing.T) {
 	svc := &mockStockService{}
-	r := setupTestRouter(svc, &mockScheduler{})
+	r := setupTestRouter(svc, &mockScheduler{}, nil)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/stocks/append", nil)
@@ -30,7 +30,7 @@ func TestAppendStockDataSuccess(t *testing.T) {
 func TestAppendStockDataError(t *testing.T) {
 	svc := &mockStockService{}
 	sched := &mockScheduler{triggerErr: errors.New("trigger failed")}
-	r := setupTestRouter(svc, sched)
+	r := setupTestRouter(svc, sched, nil)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/stocks/append", nil)
@@ -44,7 +44,7 @@ func TestAppendStockDataError(t *testing.T) {
 func TestAppendStockDataAlreadyRunning(t *testing.T) {
 	svc := &mockStockService{}
 	sched := &mockScheduler{alreadyRunning: true}
-	r := setupTestRouter(svc, sched)
+	r := setupTestRouter(svc, sched, nil)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/stocks/append", nil)

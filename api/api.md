@@ -63,15 +63,25 @@ curl -X POST http://localhost:8080/api/stocks/append
 
 ### 3. 股票买点扫描
 
-从数据库查询所有股票，逐个使用 Daily B1 策略判断今日是否为买点，返回所有出现买点的股票代码列表。
+按指定策略名称扫描所有股票，判断最新数据日期是否为买点，返回符合条件的股票代码列表。
 
 - **Method**: `GET`
 - **Path**: `/api/stocks/signal`
 
+#### 请求参数
+
+| 字段     | 类型   | 必填 | 说明                                 |
+|----------|--------|------|--------------------------------------|
+| strategy | string | 是   | 策略名称，如 `daily_b1_buy`          |
+
 #### 请求示例
 
 ```bash
-curl http://localhost:8080/api/stocks/signal
+# 日线 B1 策略
+curl "http://localhost:8080/api/stocks/signal?strategy=daily_b1_buy"
+
+# 周线 B1 策略
+curl "http://localhost:8080/api/stocks/signal?strategy=weekly_b1_buy"
 ```
 
 #### 成功响应
@@ -81,25 +91,22 @@ curl http://localhost:8080/api/stocks/signal
   "code": 0,
   "message": "success",
   "data": {
-    "strategies": [
-      {
-        "name": "daily_b1_buy",
-        "codes": ["600312", "000001"]
-      }
-    ]
+    "strategy": "daily_b1_buy",
+    "codes": ["600312", "000001"]
   }
 }
 ```
 
 #### 响应字段说明
 
-| 字段       | 类型              | 说明                           |
-|------------|-------------------|--------------------------------|
-| strategies | []StrategySignal  | 各策略的扫描结果               |
+| 字段     | 类型     | 说明                   |
+|----------|----------|------------------------|
+| strategy | string   | 策略名称               |
+| codes    | []string | 符合该策略的股票代码   |
 
-**StrategySignal 字段**
+#### 支持的策略名称
 
-| 字段  | 类型     | 说明                   |
-|-------|----------|------------------------|
-| name  | string   | 策略名称               |
-| codes | []string | 符合该策略的股票代码   |
+| 策略名称        | 说明                          |
+|-----------------|-------------------------------|
+| daily_b1_buy   | 日线 B1：放量回调 + KDJ超卖 + MA20向上 |
+| weekly_b1_buy  | 周线 B1：KDJ超卖 + MA20向上          |

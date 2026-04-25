@@ -19,6 +19,8 @@ type StrategySignal struct {
 type AnalysisService interface {
 	// FindBuySignals 扫描所有股票，返回每个策略对应的买点股票列表
 	FindBuySignals(ctx context.Context) ([]StrategySignal, error)
+	// FindBuySignalsByStrategy 按策略名称扫描，只返回该策略的结果
+	FindBuySignalsByStrategy(ctx context.Context, name string) (*StrategySignal, error)
 }
 
 type analysisService struct {
@@ -34,67 +36,86 @@ func NewAnalysisService(dailyRepo data.StockKlineDailyRepo, weeklyRepo data.Stoc
 func (s *analysisService) FindBuySignals(ctx context.Context) ([]StrategySignal, error) {
 	var results []StrategySignal
 
-	// 扫描日线策略
-	dailyStrategies := []*strategy.Strategy{
-		strategy.NewDailyB1BuyStrategy(),
-	}
-	dailyCodes, err := s.dailyRepo.FindAllCodes(ctx)
+	dailySigs, err := s.scanDailyStrategy(ctx, strategy.NewDailyB1BuyStrategy())
 	if err != nil {
-		return nil, fmt.Errorf("find all daily codes failed: %w", err)
+		return nil, err
 	}
-	for _, st := range dailyStrategies {
-		var matched []string
-		for _, code := range dailyCodes {
-			dailies, findErr := s.dailyRepo.FindByCode(ctx, code, 70)
-			if findErr != nil || len(dailies) == 0 {
-				continue
-			}
-			lastDate := dailies[len(dailies)-1].Date
-			klines := dailyToKlines(dailies)
-			signals := st.ScanAll(klines)
-			if len(signals) > 0 && signals[len(signals)-1].Date == lastDate {
-				matched = append(matched, code)
-			}
-		}
-		if len(matched) > 0 {
-			results = append(results, StrategySignal{
-				Name:  st.Name(),
-				Codes: matched,
-			})
-		}
+	if dailySigs != nil {
+		results = append(results, *dailySigs)
 	}
 
-	// 扫描周线策略
-	weeklyStrategies := []*strategy.Strategy{
-		strategy.NewWeeklyB1BuyStrategy(),
-	}
-	weeklyCodes, err := s.weeklyRepo.FindAllCodes(ctx)
+	weeklySigs, err := s.scanWeeklyStrategy(ctx, strategy.NewWeeklyB1BuyStrategy())
 	if err != nil {
-		return nil, fmt.Errorf("find all weekly codes failed: %w", err)
+		return nil, err
 	}
-	for _, st := range weeklyStrategies {
-		var matched []string
-		for _, code := range weeklyCodes {
-			weeklies, findErr := s.weeklyRepo.FindByCode(ctx, code, 70)
-			if findErr != nil || len(weeklies) == 0 {
-				continue
-			}
-			lastDate := weeklies[len(weeklies)-1].Date
-			klines := weeklyToKlines(weeklies)
-			signals := st.ScanAll(klines)
-			if len(signals) > 0 && signals[len(signals)-1].Date == lastDate {
-				matched = append(matched, code)
-			}
-		}
-		if len(matched) > 0 {
-			results = append(results, StrategySignal{
-				Name:  st.Name(),
-				Codes: matched,
-			})
-		}
+	if weeklySigs != nil {
+		results = append(results, *weeklySigs)
 	}
 
 	return results, nil
+}
+
+func (s *analysisService) FindBuySignalsByStrategy(ctx context.Context, name string) (*StrategySignal, error) {
+	switch name {
+	case "daily_b1_buy":
+		return s.scanDailyStrategy(ctx, strategy.NewDailyB1BuyStrategy())
+	case "weekly_b1_buy":
+		return s.scanWeeklyStrategy(ctx, strategy.NewWeeklyB1BuyStrategy())
+	default:
+		return nil, fmt.Errorf("unknown strategy: %s", name)
+	}
+}
+
+func (s *analysisService) scanDailyStrategy(ctx context.Context, st *strategy.Strategy) (*StrategySignal, error) {
+	codes, err := s.dailyRepo.FindAllCodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find all daily codes failed: %w", err)
+	}
+
+	var matched []string
+	for _, code := range codes {
+		dailies, findErr := s.dailyRepo.FindByCode(ctx, code, 70)
+		if findErr != nil || len(dailies) == 0 {
+			continue
+		}
+		lastDate := dailies[len(dailies)-1].Date
+		klines := dailyToKlines(dailies)
+		signals := st.ScanAll(klines)
+		if len(signals) > 0 && signals[len(signals)-1].Date == lastDate {
+			matched = append(matched, code)
+		}
+	}
+
+	if len(matched) == 0 {
+		return nil, nil
+	}
+	return &StrategySignal{Name: st.Name(), Codes: matched}, nil
+}
+
+func (s *analysisService) scanWeeklyStrategy(ctx context.Context, st *strategy.Strategy) (*StrategySignal, error) {
+	codes, err := s.weeklyRepo.FindAllCodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find all weekly codes failed: %w", err)
+	}
+
+	var matched []string
+	for _, code := range codes {
+		weeklies, findErr := s.weeklyRepo.FindByCode(ctx, code, 70)
+		if findErr != nil || len(weeklies) == 0 {
+			continue
+		}
+		lastDate := weeklies[len(weeklies)-1].Date
+		klines := weeklyToKlines(weeklies)
+		signals := st.ScanAll(klines)
+		if len(signals) > 0 && signals[len(signals)-1].Date == lastDate {
+			matched = append(matched, code)
+		}
+	}
+
+	if len(matched) == 0 {
+		return nil, nil
+	}
+	return &StrategySignal{Name: st.Name(), Codes: matched}, nil
 }
 
 func dailyToKlines(dailies []*model.StockKlineDaily) []*model.StockKline {

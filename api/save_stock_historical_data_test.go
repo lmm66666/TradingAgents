@@ -11,7 +11,7 @@ import (
 
 func TestSaveStockHistoricalDataSuccess(t *testing.T) {
 	svc := &mockStockService{}
-	r := setupTestRouter(svc, &mockScheduler{})
+	r := setupTestRouter(svc, &mockScheduler{}, nil)
 
 	body, _ := json.Marshal(map[string]string{"code": "000001"})
 	w := httptest.NewRecorder()
@@ -32,7 +32,7 @@ func TestSaveStockHistoricalDataSuccess(t *testing.T) {
 
 func TestSaveStockHistoricalDataMissingCode(t *testing.T) {
 	svc := &mockStockService{}
-	r := setupTestRouter(svc, &mockScheduler{})
+	r := setupTestRouter(svc, &mockScheduler{}, nil)
 
 	body, _ := json.Marshal(map[string]string{})
 	w := httptest.NewRecorder()
@@ -47,7 +47,7 @@ func TestSaveStockHistoricalDataMissingCode(t *testing.T) {
 
 func TestSaveStockHistoricalDataServiceError(t *testing.T) {
 	svc := &mockStockService{saveErr: errors.New("service error")}
-	r := setupTestRouter(svc, &mockScheduler{})
+	r := setupTestRouter(svc, &mockScheduler{}, nil)
 
 	body, _ := json.Marshal(map[string]string{"code": "000001"})
 	w := httptest.NewRecorder()
