@@ -433,13 +433,25 @@ func setFloat(fv map[string]financialReportIndicator, field string, target *floa
 	}
 }
 
+// setFloatAlt 尝试主字段名，不存在则尝试备选字段名
+// 用于兼容银行类企业（如浦发银行）与普通企业的不同字段命名
+func setFloatAlt(fv map[string]financialReportIndicator, primary, alt string, target *float64) {
+	if ind, ok := fv[primary]; ok {
+		*target, _ = strconv.ParseFloat(ind.ItemValue, 64)
+		return
+	}
+	if ind, ok := fv[alt]; ok {
+		*target, _ = strconv.ParseFloat(ind.ItemValue, 64)
+	}
+}
+
 func fillFinancialReport(report *model.FinancialReport, detail financialReportDetail) {
 	fv := buildFieldMap(detail.Data)
 
-	// 利润表
-	setFloat(fv, "BIZTOTINCO", &report.TotalRevenue)
-	setFloat(fv, "BIZTOTCOST", &report.TotalCost)
-	setFloat(fv, "PARENETP", &report.NetProfit)
+	// 利润表（银行类企业字段名不同：BIZINCO/BIZEXPE/NETPARECOMPPROF）
+	setFloatAlt(fv, "BIZTOTINCO", "BIZINCO", &report.TotalRevenue)
+	setFloatAlt(fv, "BIZTOTCOST", "BIZEXPE", &report.TotalCost)
+	setFloatAlt(fv, "PARENETP", "NETPARECOMPPROF", &report.NetProfit)
 	setFloat(fv, "NPCUT", &report.NetProfitCut)
 
 	// 盈利能力
