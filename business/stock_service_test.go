@@ -142,7 +142,7 @@ func TestStockServiceSaveHistoricalDataSuccess(t *testing.T) {
 	dailyRepo := &mockDailyRepo{}
 	weeklyRepo := &mockWeeklyRepo{}
 
-	svc := NewStockService(broker, dailyRepo, weeklyRepo, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, dailyRepo, weeklyRepo)
 	err := svc.SaveHistoricalData(context.Background(), "000001")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -163,7 +163,7 @@ func TestStockServiceSaveHistoricalDataDropIncompleteWeekly(t *testing.T) {
 	dailyRepo := &mockDailyRepo{}
 	weeklyRepo := &mockWeeklyRepo{}
 
-	svc := NewStockService(broker, dailyRepo, weeklyRepo, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, dailyRepo, weeklyRepo)
 	err := svc.SaveHistoricalData(context.Background(), "000001")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -172,7 +172,7 @@ func TestStockServiceSaveHistoricalDataDropIncompleteWeekly(t *testing.T) {
 
 // TestStockServiceSaveHistoricalDataInvalidCode 非法股票代码
 func TestStockServiceSaveHistoricalDataInvalidCode(t *testing.T) {
-	svc := NewStockService(&mockBroker{}, &mockDailyRepo{}, &mockWeeklyRepo{}, &mockFinancialRepo{})
+	svc := NewStockDataService(&mockBroker{}, &mockDailyRepo{}, &mockWeeklyRepo{})
 	err := svc.SaveHistoricalData(context.Background(), "999999")
 	if err == nil {
 		t.Fatal("expected error for invalid code, got nil")
@@ -182,7 +182,7 @@ func TestStockServiceSaveHistoricalDataInvalidCode(t *testing.T) {
 // TestStockServiceSaveHistoricalDataBrokerError broker 失败
 func TestStockServiceSaveHistoricalDataBrokerError(t *testing.T) {
 	broker := &mockBroker{historicalErr: errors.New("broker down")}
-	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{}, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, &mockDailyRepo{}, &mockWeeklyRepo{})
 
 	err := svc.SaveHistoricalData(context.Background(), "000001")
 	if err == nil {
@@ -199,7 +199,7 @@ func TestStockServiceSaveHistoricalDataDailyRepoError(t *testing.T) {
 		},
 	}
 	dailyRepo := &mockDailyRepo{upErr: errors.New("db down")}
-	svc := NewStockService(broker, dailyRepo, &mockWeeklyRepo{}, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, dailyRepo, &mockWeeklyRepo{})
 
 	err := svc.SaveHistoricalData(context.Background(), "000001")
 	if err == nil {
@@ -216,7 +216,7 @@ func TestStockServiceSaveHistoricalDataWeeklyRepoError(t *testing.T) {
 		},
 	}
 	weeklyRepo := &mockWeeklyRepo{upErr: errors.New("db down")}
-	svc := NewStockService(broker, &mockDailyRepo{}, weeklyRepo, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, &mockDailyRepo{}, weeklyRepo)
 
 	err := svc.SaveHistoricalData(context.Background(), "000001")
 	if err == nil {
@@ -241,7 +241,7 @@ func TestAppendStockDataSuccess(t *testing.T) {
 	dailyRepo := &mockDailyRepo{latest: &model.StockKlineDaily{Code: "000001", Date: "2025-04-20"}}
 	weeklyRepo := &mockWeeklyRepo{latest: &model.StockKlineWeekly{Code: "000001", Date: "2025-04-18"}}
 
-	svc := NewStockService(broker, dailyRepo, weeklyRepo, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, dailyRepo, weeklyRepo)
 	err := svc.AppendStockData(context.Background(), "000001")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -259,7 +259,7 @@ func TestAppendStockDataEmptyDB(t *testing.T) {
 	dailyRepo := &mockDailyRepo{}
 	weeklyRepo := &mockWeeklyRepo{}
 
-	svc := NewStockService(broker, dailyRepo, weeklyRepo, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, dailyRepo, weeklyRepo)
 	err := svc.AppendStockData(context.Background(), "000001")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -277,7 +277,7 @@ func TestAppendStockDataNoNewData(t *testing.T) {
 	dailyRepo := &mockDailyRepo{latest: &model.StockKlineDaily{Code: "000001", Date: "2025-04-21"}}
 	weeklyRepo := &mockWeeklyRepo{latest: &model.StockKlineWeekly{Code: "000001", Date: "2025-04-18"}}
 
-	svc := NewStockService(broker, dailyRepo, weeklyRepo, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, dailyRepo, weeklyRepo)
 	err := svc.AppendStockData(context.Background(), "000001")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -287,142 +287,10 @@ func TestAppendStockDataNoNewData(t *testing.T) {
 // TestAppendStockDataBrokerError broker 失败
 func TestAppendStockDataBrokerError(t *testing.T) {
 	broker := &mockBroker{historicalErr: errors.New("broker down")}
-	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{}, &mockFinancialRepo{})
+	svc := NewStockDataService(broker, &mockDailyRepo{}, &mockWeeklyRepo{})
 
 	err := svc.AppendStockData(context.Background(), "000001")
 	if err == nil {
 		t.Fatal("expected error when broker fails")
-	}
-}
-
-// TestSaveFinancialReportDataSuccess 成功保存财报数据
-func TestSaveFinancialReportDataSuccess(t *testing.T) {
-	broker := &mockBroker{financialData: []*model.FinancialReport{{Code: "000001", ReportDate: "20250630"}}}
-	repo := &mockFinancialRepo{}
-	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{}, repo)
-
-	err := svc.SaveFinancialReportData(context.Background(), "000001")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(repo.upserted) != 1 {
-		t.Fatalf("expected 1 report upserted, got %d", len(repo.upserted))
-	}
-	if repo.upserted[0].Code != "000001" || repo.upserted[0].ReportDate != "20250630" {
-		t.Errorf("unexpected report data: %+v", repo.upserted[0])
-	}
-}
-
-// TestSaveFinancialReportDataInvalidCode 非法股票代码
-func TestSaveFinancialReportDataInvalidCode(t *testing.T) {
-	svc := NewStockService(&mockBroker{}, &mockDailyRepo{}, &mockWeeklyRepo{}, &mockFinancialRepo{})
-	err := svc.SaveFinancialReportData(context.Background(), "999999")
-	if err == nil {
-		t.Fatal("expected error for invalid code, got nil")
-	}
-}
-
-// TestSaveFinancialReportDataRepoError repo upsert 失败
-func TestSaveFinancialReportDataRepoError(t *testing.T) {
-	broker := &mockBroker{financialData: []*model.FinancialReport{{Code: "000001", ReportDate: "20250630"}}}
-	repo := &mockFinancialRepo{upErr: errors.New("db down")}
-	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{}, repo)
-
-	err := svc.SaveFinancialReportData(context.Background(), "000001")
-	if err == nil {
-		t.Fatal("expected error when repo upsert fails")
-	}
-}
-
-// TestAppendFinancialReportDataSuccess 增量保存成功，只保存缺失的财报
-func TestAppendFinancialReportDataSuccess(t *testing.T) {
-	broker := &mockBroker{
-		financialData: []*model.FinancialReport{
-			{Code: "000001", ReportDate: "20251231"},
-			{Code: "000001", ReportDate: "20250930"},
-			{Code: "000001", ReportDate: "20250630"},
-		},
-	}
-	repo := &mockFinancialRepo{
-		reports: []*model.FinancialReport{
-			{Code: "000001", ReportDate: "20251231"},
-			{Code: "000001", ReportDate: "20250930"},
-		},
-	}
-	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{}, repo)
-
-	err := svc.AppendFinancialReportData(context.Background(), "000001")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(repo.upserted) != 1 {
-		t.Fatalf("expected 1 new report upserted, got %d", len(repo.upserted))
-	}
-	if repo.upserted[0].ReportDate != "20250630" {
-		t.Errorf("expected 20250630, got %s", repo.upserted[0].ReportDate)
-	}
-}
-
-// TestAppendFinancialReportDataNoNewData 无新数据时不报错
-func TestAppendFinancialReportDataNoNewData(t *testing.T) {
-	broker := &mockBroker{
-		financialData: []*model.FinancialReport{
-			{Code: "000001", ReportDate: "20251231"},
-		},
-	}
-	repo := &mockFinancialRepo{
-		reports: []*model.FinancialReport{
-			{Code: "000001", ReportDate: "20251231"},
-		},
-	}
-	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{}, repo)
-
-	err := svc.AppendFinancialReportData(context.Background(), "000001")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(repo.upserted) != 0 {
-		t.Fatalf("expected 0 upserts, got %d", len(repo.upserted))
-	}
-}
-
-// TestAppendFinancialReportDataBrokerError broker 失败
-func TestAppendFinancialReportDataBrokerError(t *testing.T) {
-	broker := &mockBroker{financialErr: errors.New("broker down")}
-	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{}, &mockFinancialRepo{})
-
-	err := svc.AppendFinancialReportData(context.Background(), "000001")
-	if err == nil {
-		t.Fatal("expected error when broker fails")
-	}
-}
-
-// TestAppendFinancialReportDataRepoError repo upsert 失败
-func TestAppendFinancialReportDataRepoError(t *testing.T) {
-	broker := &mockBroker{
-		financialData: []*model.FinancialReport{{Code: "000001", ReportDate: "20250630"}},
-	}
-	repo := &mockFinancialRepo{upErr: errors.New("db down")}
-	svc := NewStockService(broker, &mockDailyRepo{}, &mockWeeklyRepo{}, repo)
-
-	err := svc.AppendFinancialReportData(context.Background(), "000001")
-	if err == nil {
-		t.Fatal("expected error when repo upsert fails")
-	}
-}
-
-// TestAppendStockDataDailyRepoError 日线 upsert 失败
-func TestAppendStockDataDailyRepoError(t *testing.T) {
-	broker := &mockBroker{
-		dataByScale: map[int][]model.StockKline{
-			240: {{Code: "sh000001", Date: "2025-04-21", Open: 1, High: 2, Low: 0.5, Close: 1.5, Volume: 100}},
-		},
-	}
-	dailyRepo := &mockDailyRepo{upErr: errors.New("db down")}
-	svc := NewStockService(broker, dailyRepo, &mockWeeklyRepo{}, &mockFinancialRepo{})
-
-	err := svc.AppendStockData(context.Background(), "000001")
-	if err == nil {
-		t.Fatal("expected error when daily repo upsert fails")
 	}
 }

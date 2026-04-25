@@ -87,7 +87,7 @@ func (m *mockWeeklyRepoForScheduler) List(ctx context.Context, limit, offset int
 	return nil, nil
 }
 
-// mockSvcForScheduler 模拟 StockService
+// mockSvcForScheduler 模拟 StockDataService
 type mockSvcForScheduler struct {
 	saveErr error
 }
@@ -97,12 +97,6 @@ func (m *mockSvcForScheduler) SaveHistoricalData(ctx context.Context, code strin
 }
 func (m *mockSvcForScheduler) AppendStockData(ctx context.Context, code string) error {
 	return m.saveErr
-}
-func (m *mockSvcForScheduler) SaveFinancialReportData(ctx context.Context, code string) error {
-	return nil
-}
-func (m *mockSvcForScheduler) AppendFinancialReportData(ctx context.Context, code string) error {
-	return nil
 }
 
 func TestLastFridayDate(t *testing.T) {

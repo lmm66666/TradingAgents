@@ -9,32 +9,26 @@ import (
 	"trading/pkg/broker"
 )
 
-const defaultFinancialReportYears = 5
-const defaultFinancialReportNum = defaultFinancialReportYears * 4
-
-type StockService interface {
+type StockDataService interface {
 	SaveHistoricalData(ctx context.Context, code string) error
 	AppendStockData(ctx context.Context, code string) error
-	SaveFinancialReportData(ctx context.Context, code string) error
-	AppendFinancialReportData(ctx context.Context, code string) error
 }
 
-type stockService struct {
-	broker       broker.IBroker
-	dailyRepo    data.StockKlineDailyRepo
-	weeklyRepo   data.StockKlineWeeklyRepo
-	financialRepo data.FinancialReportRepo
+type stockDataService struct {
+	broker     broker.IBroker
+	dailyRepo  data.StockKlineDailyRepo
+	weeklyRepo data.StockKlineWeeklyRepo
 }
 
-// NewStockService 创建 StockService 实例
-func NewStockService(b broker.IBroker, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo, financialRepo data.FinancialReportRepo) StockService {
-	return &stockService{broker: b, dailyRepo: dailyRepo, weeklyRepo: weeklyRepo, financialRepo: financialRepo}
+// NewStockDataService 创建 StockDataService 实例
+func NewStockDataService(b broker.IBroker, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo) StockDataService {
+	return &stockDataService{broker: b, dailyRepo: dailyRepo, weeklyRepo: weeklyRepo}
 }
 
 // SaveHistoricalData 从 broker 获取历史数据并保存到 DB
 // 日线保存 1000 个点（scale=240），周线保存 200 个点（scale=1680）
 // 周线最后一条若不是周五则丢弃，避免保存不完整周数据
-func (s *stockService) SaveHistoricalData(ctx context.Context, code string) error {
+func (s *stockDataService) SaveHistoricalData(ctx context.Context, code string) error {
 	symbol, err := toSymbol(code)
 	if err != nil {
 		return err
@@ -70,7 +64,7 @@ func (s *stockService) SaveHistoricalData(ctx context.Context, code string) erro
 
 // AppendStockData 增量拉取并保存缺失的股票数据
 // 对比数据库最新日期，只拉取并保存新增的数据，避免全量 upsert 导致的主键冲突
-func (s *stockService) AppendStockData(ctx context.Context, code string) error {
+func (s *stockDataService) AppendStockData(ctx context.Context, code string) error {
 	symbol, err := toSymbol(code)
 	if err != nil {
 		return err
@@ -85,7 +79,7 @@ func (s *stockService) AppendStockData(ctx context.Context, code string) error {
 	return nil
 }
 
-func (s *stockService) appendDaily(ctx context.Context, symbol, code string) error {
+func (s *stockDataService) appendDaily(ctx context.Context, symbol, code string) error {
 	var lastDate string
 	if latest, err := s.dailyRepo.FindLatestByCode(ctx, code); err == nil {
 		lastDate = latest.Date
@@ -107,7 +101,7 @@ func (s *stockService) appendDaily(ctx context.Context, symbol, code string) err
 	return nil
 }
 
-func (s *stockService) appendWeekly(ctx context.Context, symbol, code string) error {
+func (s *stockDataService) appendWeekly(ctx context.Context, symbol, code string) error {
 	var lastDate string
 	if latest, err := s.weeklyRepo.FindLatestByCode(ctx, code); err == nil {
 		lastDate = latest.Date
@@ -129,9 +123,57 @@ func (s *stockService) appendWeekly(ctx context.Context, symbol, code string) er
 	return nil
 }
 
+// ---------------------------------------------------------------------------
+// 过渡兼容层：StockService 接口与实现
+// scheduler.go / financial_scheduler.go 仍依赖 StockService，
+// 在 Task 7/8 完成前保留此兼容层，后续彻底移除。
+// ---------------------------------------------------------------------------
 
-// AppendFinancialReportData 增量拉取并保存缺失的财报数据
-// 对比数据库已有 report_date，只保存缺失的季度，避免全量 upsert
+const defaultFinancialReportYears = 5
+const defaultFinancialReportNum = defaultFinancialReportYears * 4
+
+type StockService interface {
+	SaveHistoricalData(ctx context.Context, code string) error
+	AppendStockData(ctx context.Context, code string) error
+	SaveFinancialReportData(ctx context.Context, code string) error
+	AppendFinancialReportData(ctx context.Context, code string) error
+}
+
+type stockService struct {
+	*stockDataService
+	financialRepo data.FinancialReportRepo
+}
+
+// NewStockService 创建 StockService 实例（过渡兼容）
+func NewStockService(b broker.IBroker, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo, financialRepo data.FinancialReportRepo) StockService {
+	return &stockService{
+		stockDataService: &stockDataService{broker: b, dailyRepo: dailyRepo, weeklyRepo: weeklyRepo},
+		financialRepo:    financialRepo,
+	}
+}
+
+func (s *stockService) SaveFinancialReportData(ctx context.Context, code string) error {
+	symbol, err := toSymbol(code)
+	if err != nil {
+		return err
+	}
+
+	reports, _, err := s.broker.GetFinancialReportHistorical(ctx, symbol, 1, defaultFinancialReportNum)
+	if err != nil {
+		return fmt.Errorf("fetch financial report failed: %w", err)
+	}
+
+	if len(reports) == 0 {
+		return nil
+	}
+
+	if err := s.financialRepo.Upsert(ctx, reports); err != nil {
+		return fmt.Errorf("upsert financial report failed: %w", err)
+	}
+
+	return nil
+}
+
 func (s *stockService) AppendFinancialReportData(ctx context.Context, code string) error {
 	symbol, err := toSymbol(code)
 	if err != nil {
@@ -148,7 +190,6 @@ func (s *stockService) AppendFinancialReportData(ctx context.Context, code strin
 		existingDates[r.ReportDate] = struct{}{}
 	}
 
-	// 拉取最近 4 份（1年）
 	reports, _, err := s.broker.GetFinancialReportHistorical(ctx, symbol, 1, 4)
 	if err != nil {
 		return fmt.Errorf("fetch financial report failed: %w", err)
@@ -166,30 +207,6 @@ func (s *stockService) AppendFinancialReportData(ctx context.Context, code strin
 	}
 
 	if err := s.financialRepo.Upsert(ctx, newReports); err != nil {
-		return fmt.Errorf("upsert financial report failed: %w", err)
-	}
-
-	return nil
-}
-
-// SaveFinancialReportData 从 broker 获取5年财报数据并保存到 DB
-// 一年4个季度，5年共20份财报
-func (s *stockService) SaveFinancialReportData(ctx context.Context, code string) error {
-	symbol, err := toSymbol(code)
-	if err != nil {
-		return err
-	}
-
-	reports, _, err := s.broker.GetFinancialReportHistorical(ctx, symbol, 1, defaultFinancialReportNum)
-	if err != nil {
-		return fmt.Errorf("fetch financial report failed: %w", err)
-	}
-
-	if len(reports) == 0 {
-		return nil
-	}
-
-	if err := s.financialRepo.Upsert(ctx, reports); err != nil {
 		return fmt.Errorf("upsert financial report failed: %w", err)
 	}
 

@@ -21,7 +21,7 @@ type Scheduler interface {
 
 // stockScheduler 定时任务调度器实现，每天扫描并补充缺失的股票数据
 type stockScheduler struct {
-	svc        StockService
+	svc        StockDataService
 	dailyRepo  data.StockKlineDailyRepo
 	weeklyRepo data.StockKlineWeeklyRepo
 	stopCh     chan struct{}
@@ -32,7 +32,7 @@ type stockScheduler struct {
 }
 
 // NewScheduler 创建 Scheduler 实例
-func NewScheduler(svc StockService, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo) Scheduler {
+func NewScheduler(svc StockDataService, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo) Scheduler {
 	return &stockScheduler{
 		svc:        svc,
 		dailyRepo:  dailyRepo,
