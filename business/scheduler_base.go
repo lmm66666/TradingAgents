@@ -3,7 +3,6 @@ package business
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"sync/atomic"
 
@@ -46,7 +45,7 @@ func (cw *concurrentWorker) run(ctx context.Context, items []string, handler fun
 		go func(c string) {
 			defer wg.Done()
 			if err := cw.limiter.Acquire(ctx); err != nil {
-				log.Printf("[worker] limiter acquire failed for %s: %v", c, err)
+				results <- result{code: c, err: fmt.Errorf("limiter acquire failed: %w", err)}
 				return
 			}
 			defer cw.limiter.Release()
