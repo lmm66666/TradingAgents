@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"trading/data"
-	"trading/pkg/indicator"
 )
 
 // Scheduler 调度器接口
@@ -26,9 +24,9 @@ type stockScheduler struct {
 	weeklyRepo data.StockKlineWeeklyRepo
 	stopCh     chan struct{}
 	interval   time.Duration
-	running    atomic.Bool
+	guard      triggerGuard
+	worker     *concurrentWorker
 	bgCtx      context.Context
-	limiter    *indicator.Limiter
 }
 
 // NewScheduler 创建 Scheduler 实例
@@ -39,7 +37,7 @@ func NewScheduler(svc StockDataService, dailyRepo data.StockKlineDailyRepo, week
 		weeklyRepo: weeklyRepo,
 		stopCh:     make(chan struct{}),
 		interval:   5 * time.Second,
-		limiter:    indicator.NewLimiter(100),
+		worker:     newConcurrentWorker(100),
 	}
 }
 
@@ -77,13 +75,13 @@ func (s *stockScheduler) run(ctx context.Context, hour, minute int) {
 
 // TriggerNow 手动触发一次扫描（供 API 调用）
 func (s *stockScheduler) TriggerNow(ctx context.Context) error {
-	if !s.running.CompareAndSwap(false, true) {
+	if !s.guard.tryStart() {
 		return fmt.Errorf("another task is already running")
 	}
 
 	log.Println("[scheduler] manual trigger started")
 	go func() {
-		defer s.running.Store(false)
+		defer s.guard.markDone()
 		s.scanAndConsume(s.bgCtx)
 	}()
 
@@ -128,8 +126,8 @@ func (s *stockScheduler) scanAndConsume(ctx context.Context) {
 	log.Println("[scheduler] all tasks done")
 }
 
-// scan 扫描所有股票代码，返回需要更新的任务列表
-func (s *stockScheduler) scan(ctx context.Context) ([]task, error) {
+// findCodes returns the union of daily and weekly codes.
+func (s *stockScheduler) findCodes(ctx context.Context) ([]string, error) {
 	dailyCodes, err := s.dailyRepo.FindAllCodes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find daily codes failed: %w", err)
@@ -148,47 +146,53 @@ func (s *stockScheduler) scan(ctx context.Context) ([]task, error) {
 		codeSet[c] = struct{}{}
 	}
 
+	codes := make([]string, 0, len(codeSet))
+	for c := range codeSet {
+		codes = append(codes, c)
+	}
+
+	return codes, nil
+}
+
+// concurrentCheckCodes checks all codes concurrently and returns tasks needing updates.
+func (s *stockScheduler) concurrentCheckCodes(ctx context.Context, codes []string) ([]task, []error) {
 	today := time.Now().Format("2006-01-02")
 	lastFriday := lastFridayDate(time.Now())
 
-	type result struct {
-		task task
-		ok   bool
-	}
-
-	results := make(chan result, len(codeSet))
-	var wg sync.WaitGroup
-
-	for code := range codeSet {
-		wg.Add(1)
-		go func(c string) {
-			defer wg.Done()
-			if err := s.limiter.Acquire(ctx); err != nil {
-				log.Printf("[scheduler] limiter acquire failed for %s: %v", c, err)
-				return
-			}
-			defer s.limiter.Release()
-
-			needDaily, needWeekly, err := s.checkCode(ctx, c, today, lastFriday)
-			if err != nil {
-				log.Printf("[scheduler] check %s failed: %v", c, err)
-				return
-			}
-			if needDaily || needWeekly {
-				results <- result{task: task{code: c, needDaily: needDaily, needWeekly: needWeekly}, ok: true}
-			}
-		}(code)
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
+	var mu sync.Mutex
 	var tasks []task
-	for r := range results {
-		if r.ok {
-			tasks = append(tasks, r.task)
+
+	errs := s.worker.run(ctx, codes, func(ctx context.Context, code string) error {
+		needDaily, needWeekly, checkErr := s.checkCode(ctx, code, today, lastFriday)
+		if checkErr != nil {
+			return checkErr
+		}
+		if needDaily || needWeekly {
+			mu.Lock()
+			tasks = append(tasks, task{code: code, needDaily: needDaily, needWeekly: needWeekly})
+			mu.Unlock()
+		}
+		return nil
+	})
+
+	return tasks, errs
+}
+
+// scan 扫描所有股票代码，返回需要更新的任务列表
+func (s *stockScheduler) scan(ctx context.Context) ([]task, error) {
+	codes, err := s.findCodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(codes) == 0 {
+		return nil, nil
+	}
+
+	tasks, errs := s.concurrentCheckCodes(ctx, codes)
+	if len(errs) > 0 {
+		for _, e := range errs {
+			log.Printf("[scheduler] check failed: %v", e)
 		}
 	}
 
@@ -237,4 +241,3 @@ func nextDailyTime(hour, minute int) time.Time {
 	}
 	return next
 }
-

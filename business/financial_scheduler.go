@@ -4,12 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"trading/data"
-	"trading/pkg/indicator"
 )
 
 // FinancialScheduler 财报调度器接口
@@ -18,32 +14,30 @@ type FinancialScheduler interface {
 }
 
 type financialScheduler struct {
-	svc         FinancialReportService
+	svc           FinancialReportService
 	financialRepo data.FinancialReportRepo
-	running     atomic.Bool
-	interval    time.Duration
-	limiter     *indicator.Limiter
+	guard         triggerGuard
+	worker        *concurrentWorker
 }
 
 // NewFinancialScheduler 创建 FinancialScheduler 实例
 func NewFinancialScheduler(svc FinancialReportService, financialRepo data.FinancialReportRepo) FinancialScheduler {
 	return &financialScheduler{
-		svc:         svc,
+		svc:           svc,
 		financialRepo: financialRepo,
-		interval:    5 * time.Second,
-		limiter:     indicator.NewLimiter(100),
+		worker:        newConcurrentWorker(100),
 	}
 }
 
 // TriggerNow 手动触发一次财报扫描（供 API 调用）
 func (s *financialScheduler) TriggerNow(ctx context.Context) error {
-	if !s.running.CompareAndSwap(false, true) {
+	if !s.guard.tryStart() {
 		return fmt.Errorf("another task is already running")
 	}
 
 	log.Println("[financial-scheduler] manual trigger started")
 	go func() {
-		defer s.running.Store(false)
+		defer s.guard.markDone()
 		if err := s.scanAndConsume(ctx); err != nil {
 			log.Printf("[financial-scheduler] scan failed: %v", err)
 		}
@@ -63,45 +57,16 @@ func (s *financialScheduler) scanAndConsume(ctx context.Context) error {
 		return nil
 	}
 
-	log.Printf("[financial-scheduler] %d codes queued, consuming one every %v", len(codes), s.interval)
+	log.Printf("[financial-scheduler] %d codes queued", len(codes))
 
-	type result struct {
-		code string
-		err  error
+	errs := s.worker.run(ctx, codes, func(ctx context.Context, code string) error {
+		return s.svc.AppendFinancialReportData(ctx, code)
+	})
+
+	for _, err := range errs {
+		log.Printf("[financial-scheduler] failed: %v", err)
 	}
 
-	results := make(chan result, len(codes))
-	var wg sync.WaitGroup
-
-	for _, code := range codes {
-		wg.Add(1)
-		go func(c string) {
-			defer wg.Done()
-			if err := s.limiter.Acquire(ctx); err != nil {
-				log.Printf("[financial-scheduler] limiter acquire failed for %s: %v", c, err)
-				return
-			}
-			defer s.limiter.Release()
-
-			if err := s.svc.AppendFinancialReportData(ctx, c); err != nil {
-				results <- result{code: c, err: err}
-			}
-		}(code)
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	var failCount int
-	for r := range results {
-		if r.err != nil {
-			failCount++
-			log.Printf("[financial-scheduler] failed %s: %v", r.code, r.err)
-		}
-	}
-
-	log.Printf("[financial-scheduler] all tasks done, %d failed", failCount)
+	log.Printf("[financial-scheduler] all tasks done, %d failed", len(errs))
 	return nil
 }
