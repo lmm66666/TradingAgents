@@ -95,6 +95,9 @@ func (m *mockSvcForScheduler) AppendStockData(ctx context.Context, code string) 
 func (m *mockSvcForScheduler) SaveFinancialReportData(ctx context.Context, code string) error {
 	return nil
 }
+func (m *mockSvcForScheduler) AppendFinancialReportData(ctx context.Context, code string) error {
+	return nil
+}
 
 func TestLastFridayDate(t *testing.T) {
 	tests := []struct {

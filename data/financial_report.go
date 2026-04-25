@@ -13,6 +13,7 @@ import (
 type FinancialReportRepo interface {
 	Upsert(ctx context.Context, reports []*model.FinancialReport) error
 	FindByCode(ctx context.Context, code string) ([]*model.FinancialReport, error)
+	FindAllCodes(ctx context.Context) ([]string, error)
 }
 
 type financialReportRepo struct {
@@ -48,4 +49,13 @@ func (r *financialReportRepo) FindByCode(ctx context.Context, code string) ([]*m
 		return nil, err
 	}
 	return reports, nil
+}
+
+// FindAllCodes 查询所有 distinct 的股票代码
+func (r *financialReportRepo) FindAllCodes(ctx context.Context) ([]string, error) {
+	var codes []string
+	if err := r.db.WithContext(ctx).Model(&model.FinancialReport{}).Distinct("code").Pluck("code", &codes).Error; err != nil {
+		return nil, err
+	}
+	return codes, nil
 }

@@ -18,6 +18,7 @@ type StockService interface {
 	SaveHistoricalData(ctx context.Context, code string) error
 	AppendStockData(ctx context.Context, code string) error
 	SaveFinancialReportData(ctx context.Context, code string) error
+	AppendFinancialReportData(ctx context.Context, code string) error
 }
 
 type stockService struct {
@@ -212,6 +213,48 @@ func toWeekly(klines []*model.StockKline) []*model.StockKlineWeekly {
 		result = append(result, &w)
 	}
 	return result
+}
+
+// AppendFinancialReportData 增量拉取并保存缺失的财报数据
+// 对比数据库已有 report_date，只保存缺失的季度，避免全量 upsert
+func (s *stockService) AppendFinancialReportData(ctx context.Context, code string) error {
+	symbol, err := toSymbol(code)
+	if err != nil {
+		return err
+	}
+
+	existing, err := s.financialRepo.FindByCode(ctx, code)
+	if err != nil {
+		return fmt.Errorf("find existing reports failed: %w", err)
+	}
+
+	existingDates := make(map[string]struct{}, len(existing))
+	for _, r := range existing {
+		existingDates[r.ReportDate] = struct{}{}
+	}
+
+	// 拉取最近 4 份（1年）
+	reports, _, err := s.broker.GetFinancialReportHistorical(ctx, symbol, 1, 4)
+	if err != nil {
+		return fmt.Errorf("fetch financial report failed: %w", err)
+	}
+
+	var newReports []*model.FinancialReport
+	for _, r := range reports {
+		if _, ok := existingDates[r.ReportDate]; !ok {
+			newReports = append(newReports, r)
+		}
+	}
+
+	if len(newReports) == 0 {
+		return nil
+	}
+
+	if err := s.financialRepo.Upsert(ctx, newReports); err != nil {
+		return fmt.Errorf("upsert financial report failed: %w", err)
+	}
+
+	return nil
 }
 
 // SaveFinancialReportData 从 broker 获取5年财报数据并保存到 DB

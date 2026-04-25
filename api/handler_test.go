@@ -26,6 +26,10 @@ func (m *mockStockService) SaveFinancialReportData(ctx context.Context, code str
 	return m.saveErr
 }
 
+func (m *mockStockService) AppendFinancialReportData(ctx context.Context, code string) error {
+	return m.saveErr
+}
+
 // mockScheduler 模拟调度器
 type mockScheduler struct {
 	triggerErr     error
@@ -41,13 +45,19 @@ func (m *mockScheduler) TriggerNow(ctx context.Context) error {
 	return m.triggerErr
 }
 
+// mockFinancialScheduler 模拟财报调度器
+type mockFinancialScheduler struct{}
+
+func (m *mockFinancialScheduler) TriggerNow(ctx context.Context) error { return nil }
+
 func setupTestRouter(svc business.StockService, scheduler business.Scheduler, analysisSvc business.AnalysisService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h := NewStockHandler(svc, scheduler, analysisSvc)
+	h := NewStockHandler(svc, scheduler, &mockFinancialScheduler{}, analysisSvc)
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
 	r.GET("/api/stocks/signal", h.GetStockBuySignals)
 	r.POST("/api/stocks/append", h.AppendStockData)
 	r.POST("/api/stocks/financial-report", h.SaveFinancialReportData)
+	r.POST("/api/stocks/financial-report/append", h.AppendFinancialReportData)
 	return r
 }
