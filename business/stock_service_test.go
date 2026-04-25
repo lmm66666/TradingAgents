@@ -40,10 +40,11 @@ func (m *mockBroker) GetFinancialReportHistorical(ctx context.Context, symbol st
 
 // mockDailyRepo 模拟日线数据仓库
 type mockDailyRepo struct {
-	k       []*model.StockKlineDaily
-	latest  *model.StockKlineDaily
-	findErr error
-	upErr   error
+	k        []*model.StockKlineDaily
+	latest   *model.StockKlineDaily
+	findErr  error
+	upErr    error
+	codesErr error
 }
 
 func (m *mockDailyRepo) Create(ctx context.Context, kline *model.StockKlineDaily) error         { return nil }
@@ -63,7 +64,7 @@ func (m *mockDailyRepo) FindLatestByCode(ctx context.Context, code string) (*mod
 	return m.latest, nil
 }
 func (m *mockDailyRepo) FindAllCodes(ctx context.Context) ([]string, error) {
-	return nil, nil
+	return nil, m.codesErr
 }
 func (m *mockDailyRepo) Update(ctx context.Context, kline *model.StockKlineDaily) error { return nil }
 func (m *mockDailyRepo) Delete(ctx context.Context, id uint) error                      { return nil }
@@ -94,10 +95,11 @@ func (m *mockFinancialRepo) FindAllCodes(ctx context.Context) ([]string, error) 
 
 // mockWeeklyRepo 模拟周线数据仓库
 type mockWeeklyRepo struct {
-	k       []*model.StockKlineWeekly
-	latest  *model.StockKlineWeekly
-	findErr error
-	upErr   error
+	k        []*model.StockKlineWeekly
+	latest   *model.StockKlineWeekly
+	findErr  error
+	upErr    error
+	codesErr error
 }
 
 func (m *mockWeeklyRepo) Create(ctx context.Context, kline *model.StockKlineWeekly) error         { return nil }
@@ -117,7 +119,7 @@ func (m *mockWeeklyRepo) FindLatestByCode(ctx context.Context, code string) (*mo
 	return m.latest, nil
 }
 func (m *mockWeeklyRepo) FindAllCodes(ctx context.Context) ([]string, error) {
-	return nil, nil
+	return nil, m.codesErr
 }
 func (m *mockWeeklyRepo) Update(ctx context.Context, kline *model.StockKlineWeekly) error { return nil }
 func (m *mockWeeklyRepo) Delete(ctx context.Context, id uint) error                      { return nil }
