@@ -35,7 +35,7 @@ func main() {
 
 	financialScheduler := business.NewFinancialScheduler(svc, d.FinancialReport())
 
-	analysisSvc := business.NewAnalysisService(d.StockKlineDaily(), d.StockKlineWeekly())
+	analysisSvc := business.NewAnalysisService(d.StockKlineDaily(), d.StockKlineWeekly(), d.FinancialReport())
 	r := api.NewRouter(svc, scheduler, financialScheduler, analysisSvc)
 
 	log.Println("Server starting on :8080")

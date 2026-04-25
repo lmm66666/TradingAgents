@@ -13,6 +13,7 @@ import (
 type FinancialReportRepo interface {
 	Upsert(ctx context.Context, reports []*model.FinancialReport) error
 	FindByCode(ctx context.Context, code string) ([]*model.FinancialReport, error)
+	FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.FinancialReport, error)
 	FindAllCodes(ctx context.Context) ([]string, error)
 }
 
@@ -40,6 +41,15 @@ func (r *financialReportRepo) Upsert(ctx context.Context, reports []*model.Finan
 			"updated_at",
 		}),
 	}).CreateInBatches(reports, 100).Error
+}
+
+// FindByCodeWithPagination 根据股票代码分页查询财报，按报告日期降序返回
+func (r *financialReportRepo) FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.FinancialReport, error) {
+	var reports []*model.FinancialReport
+	if err := r.db.WithContext(ctx).Where("code = ?", code).Order("report_date DESC").Limit(limit).Offset(offset).Find(&reports).Error; err != nil {
+		return nil, err
+	}
+	return reports, nil
 }
 
 // FindByCode 根据股票代码查询所有财报，按报告日期降序返回

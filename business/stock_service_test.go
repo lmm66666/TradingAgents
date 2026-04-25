@@ -53,6 +53,9 @@ func (m *mockDailyRepo) FindByID(ctx context.Context, id uint) (*model.StockKlin
 func (m *mockDailyRepo) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineDaily, error) {
 	return m.k, m.findErr
 }
+func (m *mockDailyRepo) FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.StockKlineDaily, error) {
+	return nil, nil
+}
 func (m *mockDailyRepo) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineDaily, error) {
 	if m.latest == nil {
 		return nil, errors.New("not found")
@@ -82,6 +85,9 @@ func (m *mockFinancialRepo) Upsert(ctx context.Context, reports []*model.Financi
 func (m *mockFinancialRepo) FindByCode(ctx context.Context, code string) ([]*model.FinancialReport, error) {
 	return m.reports, nil
 }
+func (m *mockFinancialRepo) FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.FinancialReport, error) {
+	return nil, nil
+}
 func (m *mockFinancialRepo) FindAllCodes(ctx context.Context) ([]string, error) {
 	return nil, nil
 }
@@ -100,6 +106,9 @@ func (m *mockWeeklyRepo) Upsert(ctx context.Context, klines []*model.StockKlineW
 func (m *mockWeeklyRepo) FindByID(ctx context.Context, id uint) (*model.StockKlineWeekly, error)  { return nil, nil }
 func (m *mockWeeklyRepo) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineWeekly, error) {
 	return m.k, m.findErr
+}
+func (m *mockWeeklyRepo) FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.StockKlineWeekly, error) {
+	return nil, nil
 }
 func (m *mockWeeklyRepo) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineWeekly, error) {
 	if m.latest == nil {

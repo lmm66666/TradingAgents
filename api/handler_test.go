@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"trading/business"
+	"trading/model"
 )
 
 // mockStockService 模拟 StockService
@@ -50,6 +51,35 @@ type mockFinancialScheduler struct{}
 
 func (m *mockFinancialScheduler) TriggerNow(ctx context.Context) error { return nil }
 
+// mockAnalysisService 模拟分析服务
+type mockAnalysisService struct {
+	prices       []*model.StockKlineDaily
+	reports      []*model.FinancialReport
+	pricesErr    error
+	reportsErr   error
+	signal       *business.StrategySignal
+	signalErr    error
+}
+
+func (m *mockAnalysisService) FindBuySignals(ctx context.Context) ([]business.StrategySignal, error) {
+	if m.signal == nil {
+		return nil, m.signalErr
+	}
+	return []business.StrategySignal{*m.signal}, m.signalErr
+}
+
+func (m *mockAnalysisService) FindBuySignalsByStrategy(ctx context.Context, name string) (*business.StrategySignal, error) {
+	return m.signal, m.signalErr
+}
+
+func (m *mockAnalysisService) FindStockPricesByCode(ctx context.Context, code, cycle string, limit, offset int) ([]*model.StockKlineDaily, error) {
+	return m.prices, m.pricesErr
+}
+
+func (m *mockAnalysisService) FindFinancialReportsByCode(ctx context.Context, code string, limit, offset int) ([]*model.FinancialReport, error) {
+	return m.reports, m.reportsErr
+}
+
 func setupTestRouter(svc business.StockService, scheduler business.Scheduler, analysisSvc business.AnalysisService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -59,5 +89,7 @@ func setupTestRouter(svc business.StockService, scheduler business.Scheduler, an
 	r.POST("/api/stocks/append", h.AppendStockData)
 	r.POST("/api/stocks/financial-report", h.SaveFinancialReportData)
 	r.POST("/api/stocks/financial-report/append", h.AppendFinancialReportData)
+	r.GET("/api/stocks/price", h.GetStockPrice)
+	r.GET("/api/stocks/financial-report", h.GetFinancialReport)
 	return r
 }

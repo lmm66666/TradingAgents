@@ -134,3 +134,58 @@ curl "http://localhost:8080/api/stocks/signal?strategy=weekly_b1_buy"
 |-----------------|-------------------------------|
 | daily_b1_buy   | 日线 B1：放量回调 + KDJ超卖 + MA20向上 |
 | weekly_b1_buy  | 周线 B1：KDJ超卖 + MA20向上          |
+
+---
+
+### 5. 查询股价 K 线数据
+
+根据股票代码和周期查询 K 线数据，支持分页。
+
+- **Method**: `GET`
+- **Path**: `/api/stocks/price`
+
+#### 请求参数
+
+| 字段     | 类型   | 必填 | 默认值   | 说明                                 |
+|----------|--------|------|----------|--------------------------------------|
+| code     | string | 是   | -        | 股票代码，如 `600312`               |
+| cycle    | string | 否   | `daily`  | 周期：`daily`（日线）或 `weekly`（周线）|
+| pagesize | int    | 否   | `20`     | 每页条数                             |
+| pagenum  | int    | 否   | `1`      | 页码，从 1 开始                      |
+
+#### 请求示例
+
+```bash
+# 查询日线数据（默认分页）
+curl "http://localhost:8080/api/stocks/price?code=600312"
+
+# 查询周线数据，每页 10 条，第 2 页
+curl "http://localhost:8080/api/stocks/price?code=600312&cycle=weekly&pagesize=10&pagenum=2"
+```
+
+---
+
+### 6. 查询财报数据
+
+根据股票代码查询季度财报数据，支持分页。
+
+- **Method**: `GET`
+- **Path**: `/api/stocks/financial-report`
+
+#### 请求参数
+
+| 字段     | 类型   | 必填 | 默认值   | 说明                                 |
+|----------|--------|------|----------|--------------------------------------|
+| code     | string | 是   | -        | 股票代码，如 `600312`               |
+| pagesize | int    | 否   | `20`     | 每页条数                             |
+| pagenum  | int    | 否   | `1`      | 页码，从 1 开始                      |
+
+#### 请求示例
+
+```bash
+# 查询财报数据（默认分页）
+curl "http://localhost:8080/api/stocks/financial-report?code=600312"
+
+# 每页 5 条，第 2 页
+curl "http://localhost:8080/api/stocks/financial-report?code=600312&pagesize=5&pagenum=2"
+```

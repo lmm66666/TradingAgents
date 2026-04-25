@@ -16,5 +16,7 @@ func NewRouter(svc business.StockService, scheduler business.Scheduler, financia
 	r.POST("/api/stocks/financial-report", h.SaveFinancialReportData)
 	r.POST("/api/stocks/financial-report/append", h.AppendFinancialReportData)
 	r.GET("/api/stocks/signal", h.GetStockBuySignals)
+	r.GET("/api/stocks/price", h.GetStockPrice)
+	r.GET("/api/stocks/financial-report", h.GetFinancialReport)
 	return r
 }

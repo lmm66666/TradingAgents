@@ -24,6 +24,9 @@ func (m *mockDailyRepoForScheduler) FindByID(ctx context.Context, id uint) (*mod
 func (m *mockDailyRepoForScheduler) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineDaily, error) {
 	return nil, nil
 }
+func (m *mockDailyRepoForScheduler) FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.StockKlineDaily, error) {
+	return nil, nil
+}
 func (m *mockDailyRepoForScheduler) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineDaily, error) {
 	if err, ok := m.latestErr[code]; ok {
 		return nil, err
@@ -58,6 +61,9 @@ func (m *mockWeeklyRepoForScheduler) CreateBatch(ctx context.Context, klines []*
 func (m *mockWeeklyRepoForScheduler) Upsert(ctx context.Context, klines []*model.StockKlineWeekly) error      { return nil }
 func (m *mockWeeklyRepoForScheduler) FindByID(ctx context.Context, id uint) (*model.StockKlineWeekly, error)  { return nil, nil }
 func (m *mockWeeklyRepoForScheduler) FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineWeekly, error) {
+	return nil, nil
+}
+func (m *mockWeeklyRepoForScheduler) FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.StockKlineWeekly, error) {
 	return nil, nil
 }
 func (m *mockWeeklyRepoForScheduler) FindLatestByCode(ctx context.Context, code string) (*model.StockKlineWeekly, error) {

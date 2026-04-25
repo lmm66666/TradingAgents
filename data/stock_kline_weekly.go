@@ -16,6 +16,7 @@ type StockKlineWeeklyRepo interface {
 	Upsert(ctx context.Context, klines []*model.StockKlineWeekly) error
 	FindByID(ctx context.Context, id uint) (*model.StockKlineWeekly, error)
 	FindByCode(ctx context.Context, code string, limit int) ([]*model.StockKlineWeekly, error)
+	FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.StockKlineWeekly, error)
 	FindLatestByCode(ctx context.Context, code string) (*model.StockKlineWeekly, error)
 	FindAllCodes(ctx context.Context) ([]string, error)
 	Update(ctx context.Context, kline *model.StockKlineWeekly) error
@@ -56,6 +57,15 @@ func (r *stockKlineWeeklyRepo) FindByID(ctx context.Context, id uint) (*model.St
 		return nil, err
 	}
 	return &kline, nil
+}
+
+// FindByCodeWithPagination 根据股票代码分页查询周线，按日期降序返回
+func (r *stockKlineWeeklyRepo) FindByCodeWithPagination(ctx context.Context, code string, limit, offset int) ([]*model.StockKlineWeekly, error) {
+	var klines []*model.StockKlineWeekly
+	if err := r.db.WithContext(ctx).Where("code = ?", code).Order("date DESC").Limit(limit).Offset(offset).Find(&klines).Error; err != nil {
+		return nil, err
+	}
+	return klines, nil
 }
 
 // FindByCode 根据股票代码查询最近 limit 条周线，按日期升序返回
