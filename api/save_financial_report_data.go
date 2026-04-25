@@ -19,7 +19,7 @@ func (h *StockHandler) SaveFinancialReportData(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.SaveFinancialReportData(c.Request.Context(), req.Code); err != nil {
+	if err := h.financialSvc.SaveFinancialReportData(c.Request.Context(), req.Code); err != nil {
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}

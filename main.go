@@ -28,15 +28,16 @@ func main() {
 	}
 
 	b := broker.NewSinaBroker()
-	svc := business.NewStockService(b, d.StockKlineDaily(), d.StockKlineWeekly(), d.FinancialReport())
+	svc := business.NewStockDataService(b, d.StockKlineDaily(), d.StockKlineWeekly())
+	financialSvc := business.NewFinancialReportService(b, d.FinancialReport())
 
 	scheduler := business.NewScheduler(svc, d.StockKlineDaily(), d.StockKlineWeekly())
 	scheduler.Start(context.Background(), 16, 0)
 
-	financialScheduler := business.NewFinancialScheduler(svc, d.FinancialReport())
+	financialScheduler := business.NewFinancialScheduler(financialSvc, d.FinancialReport())
 
 	analysisSvc := business.NewAnalysisService(d.StockKlineDaily(), d.StockKlineWeekly(), d.FinancialReport())
-	r := api.NewRouter(svc, scheduler, financialScheduler, analysisSvc)
+	r := api.NewRouter(svc, financialSvc, scheduler, financialScheduler, analysisSvc)
 
 	log.Println("Server starting on :8080")
 	if err := r.Run(":8080"); err != nil {

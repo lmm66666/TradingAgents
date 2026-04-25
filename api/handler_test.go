@@ -10,24 +10,29 @@ import (
 	"trading/model"
 )
 
-// mockStockService 模拟 StockService
-type mockStockService struct {
+// mockStockDataService 模拟 StockDataService
+type mockStockDataService struct {
 	saveErr error
 }
 
-func (m *mockStockService) SaveHistoricalData(ctx context.Context, code string) error {
+func (m *mockStockDataService) SaveHistoricalData(ctx context.Context, code string) error {
 	return m.saveErr
 }
 
-func (m *mockStockService) AppendStockData(ctx context.Context, code string) error {
+func (m *mockStockDataService) AppendStockData(ctx context.Context, code string) error {
 	return m.saveErr
 }
 
-func (m *mockStockService) SaveFinancialReportData(ctx context.Context, code string) error {
+// mockFinancialReportService 模拟 FinancialReportService
+type mockFinancialReportService struct {
+	saveErr error
+}
+
+func (m *mockFinancialReportService) SaveFinancialReportData(ctx context.Context, code string) error {
 	return m.saveErr
 }
 
-func (m *mockStockService) AppendFinancialReportData(ctx context.Context, code string) error {
+func (m *mockFinancialReportService) AppendFinancialReportData(ctx context.Context, code string) error {
 	return m.saveErr
 }
 
@@ -80,10 +85,10 @@ func (m *mockAnalysisService) FindFinancialReportsByCode(ctx context.Context, co
 	return m.reports, m.reportsErr
 }
 
-func setupTestRouter(svc business.StockService, scheduler business.Scheduler, analysisSvc business.AnalysisService) *gin.Engine {
+func setupTestRouter(svc business.StockDataService, financialSvc business.FinancialReportService, scheduler business.Scheduler, analysisSvc business.AnalysisService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h := NewStockHandler(svc, scheduler, &mockFinancialScheduler{}, analysisSvc)
+	h := NewStockHandler(svc, financialSvc, scheduler, &mockFinancialScheduler{}, analysisSvc)
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
 	r.GET("/api/stocks/signal", h.GetStockBuySignals)
 	r.POST("/api/stocks/append", h.AppendStockData)

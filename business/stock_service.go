@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"trading/data"
-	"trading/model"
 	"trading/pkg/broker"
 )
 
@@ -120,95 +119,5 @@ func (s *stockDataService) appendWeekly(ctx context.Context, symbol, code string
 	if err := s.weeklyRepo.Upsert(ctx, toWeekly(newKlines)); err != nil {
 		return fmt.Errorf("upsert weekly failed: %w", err)
 	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------
-// 过渡兼容层：StockService 接口与实现
-// scheduler.go / financial_scheduler.go 仍依赖 StockService，
-// 在 Task 7/8 完成前保留此兼容层，后续彻底移除。
-// ---------------------------------------------------------------------------
-
-const defaultFinancialReportYears = 5
-const defaultFinancialReportNum = defaultFinancialReportYears * 4
-
-type StockService interface {
-	SaveHistoricalData(ctx context.Context, code string) error
-	AppendStockData(ctx context.Context, code string) error
-	SaveFinancialReportData(ctx context.Context, code string) error
-	AppendFinancialReportData(ctx context.Context, code string) error
-}
-
-type stockService struct {
-	*stockDataService
-	financialRepo data.FinancialReportRepo
-}
-
-// NewStockService 创建 StockService 实例（过渡兼容）
-func NewStockService(b broker.IBroker, dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo, financialRepo data.FinancialReportRepo) StockService {
-	return &stockService{
-		stockDataService: &stockDataService{broker: b, dailyRepo: dailyRepo, weeklyRepo: weeklyRepo},
-		financialRepo:    financialRepo,
-	}
-}
-
-func (s *stockService) SaveFinancialReportData(ctx context.Context, code string) error {
-	symbol, err := toSymbol(code)
-	if err != nil {
-		return err
-	}
-
-	reports, _, err := s.broker.GetFinancialReportHistorical(ctx, symbol, 1, defaultFinancialReportNum)
-	if err != nil {
-		return fmt.Errorf("fetch financial report failed: %w", err)
-	}
-
-	if len(reports) == 0 {
-		return nil
-	}
-
-	if err := s.financialRepo.Upsert(ctx, reports); err != nil {
-		return fmt.Errorf("upsert financial report failed: %w", err)
-	}
-
-	return nil
-}
-
-func (s *stockService) AppendFinancialReportData(ctx context.Context, code string) error {
-	symbol, err := toSymbol(code)
-	if err != nil {
-		return err
-	}
-
-	existing, err := s.financialRepo.FindByCode(ctx, code)
-	if err != nil {
-		return fmt.Errorf("find existing reports failed: %w", err)
-	}
-
-	existingDates := make(map[string]struct{}, len(existing))
-	for _, r := range existing {
-		existingDates[r.ReportDate] = struct{}{}
-	}
-
-	reports, _, err := s.broker.GetFinancialReportHistorical(ctx, symbol, 1, 4)
-	if err != nil {
-		return fmt.Errorf("fetch financial report failed: %w", err)
-	}
-
-	var newReports []*model.FinancialReport
-	for _, r := range reports {
-		if _, ok := existingDates[r.ReportDate]; !ok {
-			newReports = append(newReports, r)
-		}
-	}
-
-	if len(newReports) == 0 {
-		return nil
-	}
-
-	if err := s.financialRepo.Upsert(ctx, newReports); err != nil {
-		return fmt.Errorf("upsert financial report failed: %w", err)
-	}
-
 	return nil
 }

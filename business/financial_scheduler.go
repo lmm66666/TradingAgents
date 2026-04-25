@@ -18,7 +18,7 @@ type FinancialScheduler interface {
 }
 
 type financialScheduler struct {
-	svc         StockService
+	svc         FinancialReportService
 	financialRepo data.FinancialReportRepo
 	running     atomic.Bool
 	interval    time.Duration
@@ -26,7 +26,7 @@ type financialScheduler struct {
 }
 
 // NewFinancialScheduler 创建 FinancialScheduler 实例
-func NewFinancialScheduler(svc StockService, financialRepo data.FinancialReportRepo) FinancialScheduler {
+func NewFinancialScheduler(svc FinancialReportService, financialRepo data.FinancialReportRepo) FinancialScheduler {
 	return &financialScheduler{
 		svc:         svc,
 		financialRepo: financialRepo,
