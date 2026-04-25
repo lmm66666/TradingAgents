@@ -165,7 +165,22 @@ curl "http://localhost:8080/api/stocks/price?code=600312&cycle=weekly&pagesize=1
 
 ---
 
-### 6. 查询财报数据
+### 6. 补全财报数据
+
+手动触发财报数据补全扫描，检查所有股票代码的财报数据完整性，自动补充缺失的季度财报。
+
+- **Method**: `POST`
+- **Path**: `/api/stocks/financial-report/append`
+
+#### 请求示例
+
+```bash
+curl -X POST http://localhost:8080/api/stocks/financial-report/append
+```
+
+---
+
+### 7. 查询财报数据
 
 根据股票代码查询季度财报数据，支持分页。
 

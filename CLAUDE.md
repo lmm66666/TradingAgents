@@ -26,20 +26,23 @@ trading/
 │   ├── README.md            # Model 规范（进入该目录时必须优先读取）
 │   ├── stock_kline.go       # 通用 K 线数据模型（GORM）
 │   ├── stock_kline_daily.go # 日线数据模型（表 t_stock_kline_daily）
-│   └── stock_kline_weekly.go # 周线数据模型（表 t_stock_kline_weekly）
+│   ├── stock_kline_weekly.go # 周线数据模型（表 t_stock_kline_weekly）
+│   └── financial_report.go  # 财报数据模型（表 t_financial_reports）
 ├── data/                    # 数据访问层（Repository）
 │   ├── data.go              # Data 入口，管理数据库连接与各模型 Repo
 │   ├── stock_kline_daily.go # 日线数据仓库接口与实现
-│   └── stock_kline_weekly.go # 周线数据仓库接口与实现
+│   ├── stock_kline_weekly.go # 周线数据仓库接口与实现
+│   └── financial_report.go  # 财报数据仓库接口与实现
 ├── business/                # 业务逻辑层
 │   ├── stock_service.go     # StockService 接口与实现（数据拉取、清洗、保存）
 │   ├── stock_service_test.go
-│   ├── analysis_service.go  # AnalysisService 接口与实现（买点扫描）
-│   ├── scheduler.go         # 定时任务调度器（每日扫描并补充缺失数据）
-│   └── scheduler_test.go
-├── api/                     # HTTP API 层（gin）
+│   ├── analysis_service.go  # AnalysisService 接口与实现（买点扫描、数据查询）
+│   ├── scheduler.go         # 股票数据定时任务调度器
+│   ├── scheduler_test.go
+│   └── financial_scheduler.go # 财报数据定时任务调度器
+├── api/                     # HTTP API 层（gin，一个接口一个文件）
 │   ├── api.md               # API 接口文档（含 curl 示例）
-│   ├── README.md            # API 规范（一个接口一个文件）
+│   ├── README.md            # API 规范
 │   ├── router.go            # gin 路由注册
 │   ├── handler.go           # 公共 handler 结构体与响应方法
 │   ├── handler_test.go      # 公共 mock 与测试工具
@@ -47,7 +50,15 @@ trading/
 │   ├── save_stock_historical_data_test.go
 │   ├── append_stock_data.go             # POST /api/stocks/append
 │   ├── append_stock_data_test.go
-│   └── get_stock_buy_signals.go         # GET /api/stocks/analysis
+│   ├── save_financial_report_data.go    # POST /api/stocks/financial-report
+│   ├── save_financial_report_data_test.go
+│   ├── append_financial_report_data.go  # POST /api/stocks/financial-report/append
+│   ├── append_financial_report_data_test.go
+│   ├── get_stock_buy_signals.go         # GET /api/stocks/signal
+│   ├── get_stock_price.go               # GET /api/stocks/price
+│   ├── get_stock_price_test.go
+│   ├── get_financial_report.go          # GET /api/stocks/financial-report
+│   └── get_financial_report_test.go
 ├── pkg/
 │   ├── broker/              # 行情数据提供者
 │   │   ├── broker.go        # IBroker 统一接口
@@ -80,7 +91,10 @@ trading/
 │       ├── buy.go           # 预定义买入策略（如 B1）
 │       └── sell.go          # 预定义卖出策略
 └── shell/                   # 脚本工具
-    └── save_historical.sh   # 批量保存历史数据脚本
+    ├── save_stock_historical.sh   # 批量保存股票历史 K 线数据
+    ├── save_financial_report.sh   # 批量保存股票财报数据
+    └── code/                      # 股票代码列表
+        └── 上海.txt
 ```
 
 # 开发规范
