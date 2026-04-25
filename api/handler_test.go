@@ -56,25 +56,29 @@ type mockFinancialScheduler struct{}
 
 func (m *mockFinancialScheduler) TriggerNow(ctx context.Context) error { return nil }
 
-// mockAnalysisService 模拟分析服务
-type mockAnalysisService struct {
-	prices       []*model.StockKlineDaily
-	reports      []*model.FinancialReport
-	pricesErr    error
-	reportsErr   error
-	signal       *business.StrategySignal
-	signalErr    error
+// mockSignalService 模拟信号扫描服务
+type mockSignalService struct {
+	signal    *business.StrategySignal
+	signalErr error
 }
 
-func (m *mockAnalysisService) FindBuySignals(ctx context.Context) ([]business.StrategySignal, error) {
+func (m *mockSignalService) FindBuySignals(ctx context.Context) ([]business.StrategySignal, error) {
 	if m.signal == nil {
 		return nil, m.signalErr
 	}
 	return []business.StrategySignal{*m.signal}, m.signalErr
 }
 
-func (m *mockAnalysisService) FindBuySignalsByStrategy(ctx context.Context, name string) (*business.StrategySignal, error) {
+func (m *mockSignalService) FindBuySignalsByStrategy(ctx context.Context, name string) (*business.StrategySignal, error) {
 	return m.signal, m.signalErr
+}
+
+// mockAnalysisService 模拟分析服务
+type mockAnalysisService struct {
+	prices     []*model.StockKlineDaily
+	reports    []*model.FinancialReport
+	pricesErr  error
+	reportsErr error
 }
 
 func (m *mockAnalysisService) FindStockPricesByCode(ctx context.Context, code, cycle string, limit, offset int) ([]*model.StockKlineDaily, error) {
@@ -85,10 +89,10 @@ func (m *mockAnalysisService) FindFinancialReportsByCode(ctx context.Context, co
 	return m.reports, m.reportsErr
 }
 
-func setupTestRouter(svc business.StockDataService, financialSvc business.FinancialReportService, scheduler business.Scheduler, analysisSvc business.AnalysisService) *gin.Engine {
+func setupTestRouter(svc business.StockDataService, financialSvc business.FinancialReportService, scheduler business.Scheduler, signalSvc business.SignalService, analysisSvc business.AnalysisService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h := NewStockHandler(svc, financialSvc, scheduler, &mockFinancialScheduler{}, analysisSvc)
+	h := NewStockHandler(svc, financialSvc, scheduler, &mockFinancialScheduler{}, signalSvc, analysisSvc)
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
 	r.GET("/api/stocks/signal", h.GetStockBuySignals)
 	r.POST("/api/stocks/append", h.AppendStockData)
