@@ -9,10 +9,9 @@ set -euo pipefail
 
 BASE_URL="${1:-http://localhost:8080}"
 API_URL="${BASE_URL}/api/stocks/financial-report"
-INTERVAL=10
+INTERVAL=7
 
 codes=(
-  600000 600009 600010 600011 600015 600016 600018 600019
   600025 600027 600028 600029 600030 600031 600036 600038
   600048 600050 600061 600066 600085 600089 600104 600109
   600111 600115 600118 600150 600153 600170 600176 600177
@@ -62,8 +61,12 @@ for i in "${!codes[@]}"; do
     -d "{\"code\": \"${code}\"}" \
     --max-time 30)
 
-  http_code=$(echo "$resp" | tail -1)
+  http_code=$(echo "$resp" | tail -1 | tr -d '\r')
   body=$(echo "$resp" | sed '$d')
+
+  if ! [[ "$http_code" =~ ^[0-9]+$ ]]; then
+    http_code="000"
+  fi
 
   if [ "$http_code" -eq 200 ]; then
     echo "[${idx}/${total}] ${code} OK"
