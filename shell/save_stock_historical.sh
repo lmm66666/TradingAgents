@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # 每 10s 调用 SaveStockHistoricalData 保存一只股票的历史数据
-# 用法: ./save_historical.sh [base_url]
-# 示例: ./save_historical.sh http://localhost:8080
+# 用法: ./save_stock_historical.sh [base_url]
+# 示例: ./save_stock_historical.sh http://localhost:8080
 #
 
 set -euo pipefail
