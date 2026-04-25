@@ -16,7 +16,7 @@
 pkg/indicator/  → 纯计算（MA、MACD、KDJ）
 pkg/filter/     → 技术指标过滤器，输入 K 线返回每天的日期+布尔结果
 pkg/strategy/   → 策略层，组合多个 filter 取交集，支持 Scan / ScanAll
-business/       → StockService（数据拉取保存）、AnalysisService（策略扫描与查询）、Scheduler（定时任务）
+business/       → 数据拉取（StockDataService / FinancialReportService）、策略扫描（SignalService）、数据查询（QueryService）、定时调度（stock_scheduler / financial_scheduler）
 api/            → HTTP 接口层（gin）
 ```
 
@@ -43,13 +43,22 @@ trading/
 │   ├── stock_kline_daily.go # 日线数据仓库接口与实现
 │   ├── stock_kline_weekly.go # 周线数据仓库接口与实现
 │   └── financial_report.go  # 财报数据仓库接口与实现
-├── business/                # 业务逻辑层
-│   ├── stock_service.go     # StockService 接口与实现（数据拉取、清洗、保存）
+├── business/                       # 业务逻辑层
+│   ├── stock_service.go           # StockDataService：行情数据拉取、保存
 │   ├── stock_service_test.go
-│   ├── analysis_service.go  # AnalysisService 接口与实现（买点扫描、数据查询）
-│   ├── scheduler.go         # 股票数据定时任务调度器
-│   ├── scheduler_test.go
-│   └── financial_scheduler.go # 财报数据定时任务调度器
+│   ├── financial_service.go       # FinancialReportService：财报数据拉取、保存
+│   ├── financial_service_test.go
+│   ├── signal_service.go          # SignalService：策略扫描（买点信号）
+│   ├── signal_service_test.go
+│   ├── query_service.go           # QueryService：股价/财报数据查询
+│   ├── query_service_test.go
+│   ├── scheduler_base.go          # 通用调度器基础设施（triggerGuard、concurrentWorker）
+│   ├── scheduler_base_test.go
+│   ├── stock_scheduler.go         # 行情增量调度器
+│   ├── stock_scheduler_test.go
+│   ├── financial_scheduler.go     # 财报增量调度器
+│   ├── util.go                    # 工具函数（toSymbol、cleanKlines 等）
+│   └── util_test.go
 ├── api/                     # HTTP API 层（gin，一个接口一个文件）
 │   ├── api.md               # API 接口文档（含 curl 示例）
 │   ├── README.md            # API 规范
