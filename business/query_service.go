@@ -8,26 +8,26 @@ import (
 	"trading/model"
 )
 
-// AnalysisService 股票分析服务
-type AnalysisService interface {
+// QueryService 股票数据查询服务
+type QueryService interface {
 	// FindStockPricesByCode 根据股票代码和周期查询 K 线数据
 	FindStockPricesByCode(ctx context.Context, code, cycle string, limit, offset int) ([]*model.StockKlineDaily, error)
 	// FindFinancialReportsByCode 根据股票代码分页查询财报数据
 	FindFinancialReportsByCode(ctx context.Context, code string, limit, offset int) ([]*model.FinancialReport, error)
 }
 
-type analysisService struct {
+type queryService struct {
 	dailyRepo     data.StockKlineDailyRepo
 	weeklyRepo    data.StockKlineWeeklyRepo
 	financialRepo data.FinancialReportRepo
 }
 
-// NewAnalysisService 创建 AnalysisService 实例
-func NewAnalysisService(dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo, financialRepo data.FinancialReportRepo) AnalysisService {
-	return &analysisService{dailyRepo: dailyRepo, weeklyRepo: weeklyRepo, financialRepo: financialRepo}
+// NewQueryService 创建 QueryService 实例
+func NewQueryService(dailyRepo data.StockKlineDailyRepo, weeklyRepo data.StockKlineWeeklyRepo, financialRepo data.FinancialReportRepo) QueryService {
+	return &queryService{dailyRepo: dailyRepo, weeklyRepo: weeklyRepo, financialRepo: financialRepo}
 }
 
-func (s *analysisService) FindStockPricesByCode(ctx context.Context, code, cycle string, limit, offset int) ([]*model.StockKlineDaily, error) {
+func (s *queryService) FindStockPricesByCode(ctx context.Context, code, cycle string, limit, offset int) ([]*model.StockKlineDaily, error) {
 	switch cycle {
 	case "daily":
 		return s.dailyRepo.FindByCodeWithPagination(ctx, code, limit, offset)
@@ -47,6 +47,6 @@ func (s *analysisService) FindStockPricesByCode(ctx context.Context, code, cycle
 	}
 }
 
-func (s *analysisService) FindFinancialReportsByCode(ctx context.Context, code string, limit, offset int) ([]*model.FinancialReport, error) {
+func (s *queryService) FindFinancialReportsByCode(ctx context.Context, code string, limit, offset int) ([]*model.FinancialReport, error) {
 	return s.financialRepo.FindByCodeWithPagination(ctx, code, limit, offset)
 }

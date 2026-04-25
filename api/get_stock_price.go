@@ -32,7 +32,7 @@ func (h *StockHandler) GetStockPrice(c *gin.Context) {
 	}
 	offset := (pageNum - 1) * pageSize
 
-	data, err := h.analysisSvc.FindStockPricesByCode(c.Request.Context(), code, cycle, pageSize, offset)
+	data, err := h.querySvc.FindStockPricesByCode(c.Request.Context(), code, cycle, pageSize, offset)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return

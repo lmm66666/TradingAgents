@@ -26,7 +26,7 @@ func (h *StockHandler) GetFinancialReport(c *gin.Context) {
 	}
 	offset := (pageNum - 1) * pageSize
 
-	data, err := h.analysisSvc.FindFinancialReportsByCode(c.Request.Context(), code, pageSize, offset)
+	data, err := h.querySvc.FindFinancialReportsByCode(c.Request.Context(), code, pageSize, offset)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, err.Error())
 		return

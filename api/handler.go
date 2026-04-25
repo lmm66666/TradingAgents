@@ -15,12 +15,12 @@ type StockHandler struct {
 	scheduler          business.Scheduler
 	financialScheduler business.FinancialScheduler
 	signalSvc          business.SignalService
-	analysisSvc        business.AnalysisService
+	querySvc           business.QueryService
 }
 
 // NewStockHandler 创建 StockHandler
-func NewStockHandler(svc business.StockDataService, financialSvc business.FinancialReportService, scheduler business.Scheduler, financialScheduler business.FinancialScheduler, signalSvc business.SignalService, analysisSvc business.AnalysisService) *StockHandler {
-	return &StockHandler{svc: svc, financialSvc: financialSvc, scheduler: scheduler, financialScheduler: financialScheduler, signalSvc: signalSvc, analysisSvc: analysisSvc}
+func NewStockHandler(svc business.StockDataService, financialSvc business.FinancialReportService, scheduler business.Scheduler, financialScheduler business.FinancialScheduler, signalSvc business.SignalService, querySvc business.QueryService) *StockHandler {
+	return &StockHandler{svc: svc, financialSvc: financialSvc, scheduler: scheduler, financialScheduler: financialScheduler, signalSvc: signalSvc, querySvc: querySvc}
 }
 
 // response 统一 JSON 响应结构

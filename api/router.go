@@ -7,9 +7,9 @@ import (
 )
 
 // NewRouter 创建 gin 路由
-func NewRouter(svc business.StockDataService, financialSvc business.FinancialReportService, scheduler business.Scheduler, financialScheduler business.FinancialScheduler, signalSvc business.SignalService, analysisSvc business.AnalysisService) *gin.Engine {
+func NewRouter(svc business.StockDataService, financialSvc business.FinancialReportService, scheduler business.Scheduler, financialScheduler business.FinancialScheduler, signalSvc business.SignalService, querySvc business.QueryService) *gin.Engine {
 	r := gin.Default()
-	h := NewStockHandler(svc, financialSvc, scheduler, financialScheduler, signalSvc, analysisSvc)
+	h := NewStockHandler(svc, financialSvc, scheduler, financialScheduler, signalSvc, querySvc)
 
 	r.POST("/api/stocks/historical", h.SaveStockHistoricalData)
 	r.POST("/api/stocks/append", h.AppendStockData)
