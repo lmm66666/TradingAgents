@@ -1,5 +1,13 @@
 # 项目概述
-这是一个使用 agent 分析股票数据辅助投资决策的 Go 项目。
+一个基于 Go 的股票数据收集与分析平台，从新浪财经获取 A 股行情与财报数据，提供技术指标计算、策略扫描和 HTTP API 查询能力，辅助投资决策。
+
+## 核心功能
+- **行情数据**：日线/周线历史 K 线拉取与存储
+- **财报数据**：季度财报核心指标（利润表、盈利能力、偿债能力、运营效率、现金流）
+- **增量更新**：对比数据库已有数据，只补充缺失部分
+- **策略扫描**：基于 MA、MACD、KDJ、成交量等指标的全市场买点扫描
+- **HTTP API**：数据写入、数据查询、策略扫描的统一 RESTful 接口
+- **批量脚本**：Shell 脚本批量拉取多只股票数据
 
 # 项目架构
 
@@ -8,8 +16,8 @@
 pkg/indicator/  → 纯计算（MA、MACD、KDJ）
 pkg/filter/     → 技术指标过滤器，输入 K 线返回每天的日期+布尔结果
 pkg/strategy/   → 策略层，组合多个 filter 取交集，支持 Scan / ScanAll
-business/       → StockService 数据服务、Scheduler 定时任务
-api/            → HTTP 接口层
+business/       → StockService（数据拉取保存）、AnalysisService（策略扫描与查询）、Scheduler（定时任务）
+api/            → HTTP 接口层（gin）
 ```
 
 # 项目结构
@@ -18,7 +26,9 @@ api/            → HTTP 接口层
 trading/
 ├── go.mod / go.sum          # Go 模块（go 1.25.7，依赖 gin、gorm、x/text）
 ├── main.go                  # 程序入口（初始化各层并启动 gin server）
+├── README.md                # 项目说明与快速开始指南
 ├── config.yaml              # 应用配置文件（DB 连接等）
+├── config.example.yaml      # 配置模板（复制后修改使用）
 ├── .gitignore               # Git 忽略规则
 ├── config/
 │   └── config.go            # 配置结构体定义与加载
@@ -96,6 +106,20 @@ trading/
     └── code/                      # 股票代码列表
         └── 上海.txt
 ```
+
+# 依赖与启动
+
+## 环境要求
+- Go 1.25.7+
+- MySQL 5.7+ 或 8.0+
+
+## 快速启动
+1. 创建数据库：`CREATE DATABASE trading CHARACTER SET utf8mb4;`
+2. 复制配置文件：`cp config.example.yaml config.yaml` 并修改数据库连接信息
+3. 安装依赖：`go mod download`
+4. 启动服务：`go run .`
+
+服务默认监听 `:8080`，启动后会自动执行 `AutoMigrate` 创建数据表。
 
 # 开发规范
 ## 强制要求
