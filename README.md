@@ -137,9 +137,12 @@ trading/
 │   ├── stock_kline_weekly.go
 │   └── financial_report.go
 ├── business/                # 业务逻辑层
-│   ├── stock_service.go     # 数据拉取与保存
-│   ├── analysis_service.go  # 策略扫描与数据查询
-│   ├── scheduler.go         # 股票数据定时调度
+│   ├── stock_service.go     # 行情数据拉取与保存
+│   ├── financial_service.go # 财报数据拉取与保存
+│   ├── signal_service.go    # 策略扫描（买点信号）
+│   ├── query_service.go     # 数据查询（股价/财报）
+│   ├── scheduler_base.go    # 调度器公共基础设施
+│   ├── stock_scheduler.go   # 行情数据定时调度
 │   └── financial_scheduler.go # 财报数据定时调度
 ├── api/                     # HTTP API 层（gin）
 │   ├── router.go
