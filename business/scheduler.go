@@ -238,21 +238,3 @@ func nextDailyTime(hour, minute int) time.Time {
 	return next
 }
 
-// lastFridayDate 返回最近一个周五的日期字符串
-func lastFridayDate(t time.Time) string {
-	wd := t.Weekday()
-	daysBack := int(wd - time.Friday)
-	if daysBack < 0 {
-		daysBack += 7
-	}
-	if wd == time.Friday {
-		daysBack = 0
-	}
-	return t.Add(-time.Duration(daysBack) * 24 * time.Hour).Format("2006-01-02")
-}
-
-// isWeekday 判断是否为工作日（周一到周五）
-func isWeekday(t time.Time) bool {
-	wd := t.Weekday()
-	return wd != time.Saturday && wd != time.Sunday
-}

@@ -147,20 +147,3 @@ func (s *analysisService) scanWeeklyStrategy(ctx context.Context, st *strategy.S
 	return &StrategySignal{Name: st.Name(), Codes: matched}, nil
 }
 
-func dailyToKlines(dailies []*model.StockKlineDaily) []*model.StockKline {
-	result := make([]*model.StockKline, 0, len(dailies))
-	for _, d := range dailies {
-		k := model.StockKline(*d)
-		result = append(result, &k)
-	}
-	return result
-}
-
-func weeklyToKlines(weeklies []*model.StockKlineWeekly) []*model.StockKline {
-	result := make([]*model.StockKline, 0, len(weeklies))
-	for _, w := range weeklies {
-		k := model.StockKline(*w)
-		result = append(result, &k)
-	}
-	return result
-}

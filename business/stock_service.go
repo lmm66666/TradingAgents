@@ -3,8 +3,6 @@ package business
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	"trading/data"
 	"trading/model"
@@ -131,89 +129,6 @@ func (s *stockService) appendWeekly(ctx context.Context, symbol, code string) er
 	return nil
 }
 
-// filterAfterDate 过滤出日期严格大于 lastDate 的 K 线
-func filterAfterDate(klines []*model.StockKline, lastDate string) []*model.StockKline {
-	if lastDate == "" {
-		return klines
-	}
-	result := make([]*model.StockKline, 0, len(klines))
-	for _, k := range klines {
-		if k.Date > lastDate {
-			result = append(result, k)
-		}
-	}
-	return result
-}
-
-// toSymbol 将纯数字 code 转换为带前缀的 symbol
-func toSymbol(code string) (string, error) {
-	switch {
-	case strings.HasPrefix(code, "6"):
-		return "sh" + code, nil
-	case strings.HasPrefix(code, "0"), strings.HasPrefix(code, "3"):
-		return "sz" + code, nil
-	default:
-		return "", fmt.Errorf("unsupported stock code: %s", code)
-	}
-}
-
-// cleanKlines 去掉 Code 中的 sh/sz 前缀
-func cleanKlines(klines []model.StockKline) []*model.StockKline {
-	result := make([]*model.StockKline, 0, len(klines))
-	for i := range klines {
-		k := &klines[i]
-		k.Code = strings.TrimPrefix(k.Code, "sh")
-		k.Code = strings.TrimPrefix(k.Code, "sz")
-		result = append(result, k)
-	}
-	return result
-}
-
-// filterIncompleteWeekly 过滤掉最后一条非周五的周线数据
-// broker 返回的周线若最后一条是周中日期，则为不完整周，应丢弃
-func filterIncompleteWeekly(klines []*model.StockKline) []*model.StockKline {
-	if len(klines) == 0 {
-		return klines
-	}
-
-	last := klines[len(klines)-1]
-	if !isFriday(last.Date) {
-		return klines[:len(klines)-1]
-	}
-	return klines
-}
-
-// isFriday 判断日期字符串是否为周五
-// 支持格式：2006-01-02 或 2006-01-02 15:04:05
-func isFriday(dateStr string) bool {
-	layout := "2006-01-02"
-	if len(dateStr) > 10 {
-		layout = "2006-01-02 15:04:05"
-	}
-	t, err := time.Parse(layout, dateStr)
-	if err != nil {
-		return false
-	}
-	return t.Weekday() == time.Friday
-}
-
-func toDaily(klines []*model.StockKline) []*model.StockKlineDaily {
-	result := make([]*model.StockKlineDaily, 0, len(klines))
-	for _, k := range klines {
-		d := model.StockKlineDaily(*k)
-		result = append(result, &d)
-	}
-	return result
-}
-
-func toWeekly(klines []*model.StockKline) []*model.StockKlineWeekly {
-	result := make([]*model.StockKlineWeekly, 0, len(klines))
-	for _, k := range klines {
-		w := model.StockKlineWeekly(*k)
-		result = append(result, &w)
-	}
-	return result
-}
 
 // AppendFinancialReportData 增量拉取并保存缺失的财报数据
 // 对比数据库已有 report_date，只保存缺失的季度，避免全量 upsert
